@@ -1,0 +1,49 @@
+- id: unpinned-version-node
+  name: Dependency pinned to 'latest' or '*'
+  severity: high
+  analyzer: dependency
+  ecosystem: node
+  message: >
+    One or more npm dependencies are pinned to 'latest' or '*'. This makes
+    deployments non-reproducible — a new version released between your CI run
+    and production deployment could introduce breaking changes or vulnerabilities.
+  fix: >
+    Replace 'latest' and '*' with explicit version ranges (e.g. "4.18.2").
+    Run `npm install` to regenerate package-lock.json and commit it.
+  match:
+    files: ["package.json"]
+    pattern: "\"latest\"|\"\\*\""
+
+- id: no-lock-file
+  name: No lock file found for Node.js project
+  severity: medium
+  analyzer: dependency
+  ecosystem: node
+  message: >
+    A package.json was found but no lock file (package-lock.json, yarn.lock,
+    or pnpm-lock.yaml) is present. Without a lock file, npm install will
+    resolve different versions on each run, making builds unreproducible.
+  fix: >
+    Run `npm install` to generate package-lock.json and commit it to version
+    control. Add *.lock to your backup strategy but never to .gitignore.
+  match:
+    files: ["package.json"]
+    pattern: ".*"
+
+- id: dev-dep-in-prod-node
+  name: Development tool found in production dependencies
+  severity: high
+  analyzer: dependency
+  ecosystem: node
+  message: >
+    A development-only package (nodemon, webpack-dev-server, jest, mocha,
+    eslint, prettier, or similar) is listed under 'dependencies' instead of
+    'devDependencies'. This bloats your production Docker image and may
+    expose debug tooling.
+  fix: >
+    Move all development tools to 'devDependencies' in package.json.
+    Run `npm install --production` or set NODE_ENV=production in your
+    Dockerfile to ensure dev packages are excluded from production builds.
+  match:
+    files: ["package.json"]
+    pattern: "nodemon|webpack-dev-server|jest|mocha|eslint|prettier|ts-node|tsx|vitest"

@@ -14,6 +14,8 @@ from rich.panel import Panel
 from vibestandard import __version__
 from vibestandard.ingestion.loader import ingest
 from vibestandard.ingestion.file_tree import build_file_tree, detect_ecosystems
+from vibestandard.analyzers.rules_loader import load_all_rules, get_rules_for_analyzer
+from vibestandard.analyzers.dependency import DependencyAnalyzer
 
 app = typer.Typer(
     name="vibestandard",
@@ -73,24 +75,80 @@ def scan(
     # --- Build file tree ---
     file_tree = build_file_tree(root)
     ecosystems = detect_ecosystems(file_tree)
+    
+    # --- Load rules ---
+    all_rules = load_all_rules()
+    dependency_rules = get_rules_for_analyzer(all_rules, "dependency")
+    
+    # --- Run Dependency Analyzer ---
+    dep_analyzer = DependencyAnalyzer(root, file_tree, dependency_rules)
+    findings = dep_analyzer.analyze()
+    
     duration = time.time() - start
 
-    # --- Summary (Phase 2 output — analyzers not wired yet) ---
-    eco_str = ", ".join(ecosystems) if ecosystems else "none detected"
+    # --- Display findings ---
     console.print()
-    console.print(
-        Panel(
-            f"[bold]Scanned:[/]  {root}\n"
-            f"[bold]Files:[/]    {len(file_tree)} files across "
-            f"{len(ecosystems)} ecosystem(s) ({eco_str})\n"
-            f"[bold]Time:[/]     {duration:.1f}s",
-            title="[bold cyan]VibeStandard Scan[/]",
-            border_style="cyan",
+    
+    if findings:
+        # Sort findings by severity
+        severity_order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+        findings.sort(key=lambda f: severity_order.get(f.severity, 4))
+        
+        # Summary
+        severity_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
+        for f in findings:
+            severity_counts[f.severity] = severity_counts.get(f.severity, 0) + 1
+        
+        console.print(
+            Panel(
+                f"[bold]Scanned:[/]  {root}\n"
+                f"[bold]Files:[/]    {len(file_tree)} files across "
+                f"{len(ecosystems)} ecosystem(s) ({', '.join(ecosystems) if ecosystems else 'none detected'})\n"
+                f"[bold]Time:[/]     {duration:.1f}s\n"
+                f"[bold]Findings:[/] {len(findings)} issues found\n"
+                f"  [red]Critical:[/] {severity_counts['critical']}  "
+                f"[bold red]High:[/] {severity_counts['high']}  "
+                f"[yellow]Medium:[/] {severity_counts['medium']}  "
+                f"[dim]Low:[/] {severity_counts['low']}",
+                title="[bold cyan]VibeStandard Scan[/]",
+                border_style="cyan",
+            )
         )
-    )
-    console.print(
-        "[dim]Analyzers not yet wired — run again after Phase 3+.[/]\n"
-    )
+        console.print()
+        
+        # Detailed findings
+        console.print("[bold]Findings:[/]\n")
+        for i, finding in enumerate(findings, 1):
+            severity_color = {
+                "critical": "red",
+                "high": "bold red",
+                "medium": "yellow",
+                "low": "dim",
+            }.get(finding.severity, "white")
+            
+            console.print(f"[bold]{i}.[/] [{severity_color}]{finding.severity.upper()}[/] {finding.name}")
+            console.print(f"   [dim]File:[/] {finding.file}")
+            if finding.line:
+                console.print(f"   [dim]Line:[/] {finding.line}")
+            console.print(f"   [dim]Rule:[/] {finding.rule_id}")
+            console.print(f"   {finding.message}")
+            if finding.fix:
+                console.print(f"   [bold green]Fix:[/] {finding.fix}")
+            console.print()
+    else:
+        console.print(
+            Panel(
+                f"[bold]Scanned:[/]  {root}\n"
+                f"[bold]Files:[/]    {len(file_tree)} files across "
+                f"{len(ecosystems)} ecosystem(s) ({', '.join(ecosystems) if ecosystems else 'none detected'})\n"
+                f"[bold]Time:[/]     {duration:.1f}s\n"
+                f"[bold green]No dependency issues found![/]",
+                title="[bold cyan]VibeStandard Scan[/]",
+                border_style="cyan",
+            )
+        )
+    
+    console.print()
 
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,147 @@
+- id: dockerfile-no-user
+  name: Dockerfile runs as root
+  severity: high
+  analyzer: infra
+  ecosystem: docker
+  message: >
+    No USER instruction was found in the Dockerfile. This means the container
+    process runs as root, which dramatically increases the blast radius of any
+    container escape or RCE vulnerability.
+  fix: >
+    Add a non-root user to your Dockerfile. After installing dependencies, add:
+      RUN addgroup --system app && adduser --system --group app
+      USER app
+    Ensure your application files are owned by this user.
+  match:
+    files: ["Dockerfile", "Dockerfile.*"]
+    pattern: "^FROM"
+
+- id: dockerfile-no-healthcheck
+  name: No HEALTHCHECK in Dockerfile
+  severity: medium
+  analyzer: infra
+  ecosystem: docker
+  message: >
+    No HEALTHCHECK instruction is defined. Without it, Docker and orchestrators
+    like Kubernetes cannot determine if your container is actually healthy,
+    leading to traffic being routed to broken instances.
+  fix: >
+    Add a HEALTHCHECK instruction, for example:
+      HEALTHCHECK --interval=30s --timeout=5s CMD curl -f http://localhost:8080/health || exit 1
+  match:
+    files: ["Dockerfile", "Dockerfile.*"]
+    pattern: "^FROM"
+
+- id: latest-image-tag
+  name: Docker image uses ':latest' tag
+  severity: high
+  analyzer: infra
+  ecosystem: docker
+  message: >
+    A Docker image is referenced with the ':latest' tag. This tag is mutable —
+    the image it points to can change at any time, making deployments
+    non-reproducible and potentially pulling in breaking changes.
+  fix: >
+    Pin all base images to a specific digest or version tag, e.g.:
+      FROM python:3.12.3-slim
+    instead of:
+      FROM python:latest
+  match:
+    files: ["Dockerfile", "Dockerfile.*", "docker-compose.yml", "docker-compose.yaml"]
+    pattern: ":latest"
+
+- id: no-volume-for-db
+  name: Database service has no volume mount
+  severity: critical
+  analyzer: infra
+  ecosystem: docker
+  message: >
+    A database service (postgres, mysql, mongo, redis) is defined in
+    docker-compose.yml but has no volumes: mapping. All data will be
+    permanently lost every time the container is restarted or recreated.
+  fix: >
+    Add a named volume for the database data directory, for example:
+      services:
+        postgres:
+          image: postgres:16
+          volumes:
+            - pgdata:/var/lib/postgresql/data
+      volumes:
+        pgdata:
+  match:
+    files: ["docker-compose.yml", "docker-compose.yaml"]
+    pattern: "postgres|mysql|mongodb|mongo|redis"
+
+- id: no-restart-policy
+  name: No restart policy on Docker service
+  severity: medium
+  analyzer: infra
+  ecosystem: docker
+  message: >
+    One or more services in docker-compose.yml have no restart: policy.
+    Without it, services will not recover automatically after a crash or
+    system reboot.
+  fix: >
+    Add `restart: unless-stopped` or `restart: always` to each service
+    in docker-compose.yml that should be resilient to failures.
+  match:
+    files: ["docker-compose.yml", "docker-compose.yaml"]
+    pattern: "services:"
+
+- id: secrets-in-env-vars
+  name: Secrets passed as plain environment variables in Compose
+  severity: high
+  analyzer: infra
+  ecosystem: docker
+  message: >
+    Secrets (passwords, API keys, tokens) appear to be passed as plain
+    environment: variables in docker-compose.yml. These are visible in
+    `docker inspect` output, process listings, and container logs.
+  fix: >
+    Use Docker secrets or a secrets manager. At minimum, load sensitive values
+    from a .env file (which must be in .gitignore) rather than hardcoding them
+    in docker-compose.yml.
+  match:
+    files: ["docker-compose.yml", "docker-compose.yaml"]
+    pattern: "PASSWORD|SECRET|API_KEY|TOKEN|PRIVATE_KEY"
+
+- id: no-dockerignore
+  name: .dockerignore file missing
+  severity: low
+  analyzer: infra
+  ecosystem: docker
+  message: >
+    No .dockerignore file was found. Without it, the Docker build context
+    includes all files in the directory — including .git, node_modules,
+    secrets files, and local configs — increasing build time and image size,
+    and potentially leaking sensitive files into the image.
+  fix: >
+    Create a .dockerignore file excluding files not needed in the image:
+      .git
+      node_modules
+      .env
+      *.md
+      __pycache__
+  match:
+    files: ["Dockerfile", "Dockerfile.*"]
+    pattern: "^FROM"
+
+- id: no-multi-stage-build
+  name: Multi-stage Docker build not used
+  severity: low
+  analyzer: infra
+  ecosystem: docker
+  message: >
+    The Dockerfile uses only a single build stage. Multi-stage builds
+    significantly reduce final image size by separating build tools from the
+    production runtime image.
+  fix: >
+    Use a builder stage for compiling/installing dependencies and a slim
+    final stage for the runtime. Example:
+      FROM python:3.12 AS builder
+      RUN pip install --target=/app/deps -r requirements.txt
+      FROM python:3.12-slim
+      COPY --from=builder /app/deps /app/deps
+  match:
+    files: ["Dockerfile", "Dockerfile.*"]
+    pattern: "^FROM"

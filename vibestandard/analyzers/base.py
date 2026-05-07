@@ -16,9 +16,27 @@ class BaseAnalyzer(ABC):
     def analyze(self) -> list[Finding]:
         pass
 
-    def add_finding(self, rule_id, file, line=None):
-        # Looks up the rule from self.rules by rule_id and creates a Finding
-        pass
+    def add_finding(self, rule_id: str, file: str, line: int | None = None) -> None:
+        """
+        Looks up the rule from self.rules by rule_id and creates a Finding.
+        Adds the finding to self.findings list.
+        """
+        rule = self.rules.get(rule_id)
+        if not rule:
+            return
+        
+        finding = Finding(
+            rule_id=rule_id,
+            name=rule.get("name", "Unknown"),
+            severity=rule.get("severity", "low"),
+            message=rule.get("message", ""),
+            fix=rule.get("fix", ""),
+            file=file,
+            line=line,
+            analyzer=self.name,
+            ecosystem=self.ecosystem,
+        )
+        self.findings.append(finding)
 
     def read_file_safe(self, path: Path) -> str | None:
         try:

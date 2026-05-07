@@ -1,0 +1,51 @@
+- id: sqlite-database
+  name: SQLite used as database backend
+  severity: critical
+  analyzer: dependency
+  ecosystem: python
+  message: >
+    SQLite is a file-based, single-writer database designed for development,
+    testing, and embedded use cases. It does not support concurrent writes,
+    does not scale horizontally, and is not suitable for production web
+    applications with multiple users.
+  fix: >
+    Replace SQLite with PostgreSQL. Update your DATABASE_URL environment
+    variable to point to a PostgreSQL instance. If using Django, install
+    psycopg2 and update DATABASES in settings.py.
+  match:
+    files: ["*.py", "*.cfg", "*.ini", "*.env", "*.env.*", "*.yaml", "*.yml"]
+    pattern: "sqlite|db\\.sqlite3|:memory:|sqlite:///|django\\.db\\.backends\\.sqlite3"
+
+- id: dev-dep-in-prod-python
+  name: Development tool found in production dependencies
+  severity: high
+  analyzer: dependency
+  ecosystem: python
+  message: >
+    A development-only package (pytest, coverage, black, isort, flake8,
+    mypy, ipython, or similar) is listed as a production dependency.
+    This bloats your production environment and may expose debug interfaces.
+  fix: >
+    Move development tools to a [dev] extras_require group in pyproject.toml
+    or a separate requirements-dev.txt file. Use `pip install -e ".[dev]"` for
+    local development and only install the base package in production.
+  match:
+    files: ["requirements.txt", "pyproject.toml", "Pipfile", "setup.py", "setup.cfg"]
+    pattern: "pytest|coverage|black|isort|flake8|pylint|mypy|ipython|ipdb|pdb|bandit|debugpy"
+
+- id: unpinned-version-python
+  name: Unpinned dependency version in Python project
+  severity: high
+  analyzer: dependency
+  ecosystem: python
+  message: >
+    One or more Python dependencies are not pinned to a specific version.
+    This makes builds non-reproducible and can introduce breaking changes
+    unexpectedly in production.
+  fix: >
+    Pin all production dependencies to exact versions (e.g. requests==2.31.0)
+    and commit a lock file (pip freeze > requirements.lock) or use
+    poetry.lock / Pipfile.lock for fully reproducible builds.
+  match:
+    files: ["requirements.txt"]
+    pattern: "^[a-zA-Z][a-zA-Z0-9_-]*\\s*$"

@@ -26,3 +26,6 @@ dev = [
 
 [project.scripts]
 vibestandard = "main:app"
+
+[tool.setuptools.packages.find]
+include = ["vibestandard*"]
