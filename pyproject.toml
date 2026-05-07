@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vibestandard"
+version = "0.1.0"
+description = "AI-Generated Code Production-Readiness Auditor"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "typer",
+    "rich",
+    "PyYAML",
+    "gitpython",
+    "requests",
+    "pathspec",
+    "jinja2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+]
+
+[project.scripts]
+vibestandard = "main:app"
