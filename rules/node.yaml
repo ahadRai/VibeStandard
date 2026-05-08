@@ -47,3 +47,48 @@
   match:
     files: ["package.json"]
     pattern: "nodemon|webpack-dev-server|jest|mocha|eslint|prettier|ts-node|tsx|vitest"
+
+- id: node-debug-enabled
+  name: Debug mode enabled in Node.js configuration
+  severity: medium
+  analyzer: config
+  ecosystem: node
+  message: >
+    Debug or verbose logging is enabled in your Node.js configuration.
+    This can expose sensitive information and impact performance.
+  fix: >
+    Set NODE_ENV=production in your environment and ensure debug flags
+    are disabled in production configs.
+  match:
+    files: ["*.js", "*.ts", "*.json", "*.env", "*.yml", "*.yaml"]
+    pattern: "(?i)(NODE_ENV\\s*=\\s*development|debug.*:.*true|verbose.*:.*true)"
+
+- id: hardcoded-secret-node
+  name: Hardcoded secret or API key in Node.js code
+  severity: critical
+  analyzer: config
+  ecosystem: node
+  message: >
+    A hardcoded password, secret key, or API token was found in your
+    Node.js code. These should never be stored in source code.
+  fix: >
+    Use environment variables or a secrets manager:
+    const secret = process.env.JWT_SECRET;
+  match:
+    files: ["*.js", "*.ts", "*.json", "*.env", "*.yml", "*.yaml"]
+    pattern: "(secret|password|apiKey|api_key|token)\\s*[:=]\\s*['\"][^'\"]{8,}['\"]"
+
+- id: cors-wildcard-node
+  name: CORS configured with wildcard origin
+  severity: high
+  analyzer: config
+  ecosystem: node
+  message: >
+    CORS is configured to allow all origins (*). This exposes your API
+    to cross-site attacks from any website.
+  fix: >
+    Configure CORS to allow only specific trusted origins:
+    app.use(cors({ origin: ['https://yourdomain.com'] }));
+  match:
+    files: ["*.js", "*.ts"]
+    pattern: "cors\\(\\{.*origin.*['\"]\\*['\"]|origin.*:.*['\"]\\*['\"]"

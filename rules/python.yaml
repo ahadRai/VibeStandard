@@ -49,3 +49,65 @@
   match:
     files: ["requirements.txt"]
     pattern: "^[a-zA-Z][a-zA-Z0-9_-]*\\s*$"
+
+- id: django-debug-true
+  name: Django DEBUG mode enabled
+  severity: critical
+  analyzer: config
+  ecosystem: python
+  message: >
+    Django DEBUG=True is enabled. This exposes detailed error pages with
+    stack traces, settings, and local variable values to users. Never enable
+    debug mode in production.
+  fix: >
+    Set DEBUG=False in production settings. Use environment variables to
+    control debug mode: DEBUG=os.environ.get('DEBUG', 'False') == 'True'
+  match:
+    files: ["*.py"]
+    pattern: "DEBUG\\s*=\\s*True"
+
+- id: hardcoded-secret-python
+  name: Hardcoded secret or password in Python code
+  severity: critical
+  analyzer: config
+  ecosystem: python
+  message: >
+    A hardcoded password, secret key, or API token was found in your Python
+    configuration. These should never be stored in source code as they can
+    be extracted from version control.
+  fix: >
+    Move all secrets to environment variables or a secrets manager.
+    Example: SECRET_KEY=os.environ['SECRET_KEY']
+  match:
+    files: ["*.py", "*.env", "*.cfg", "*.ini"]
+    pattern: "(password|secret_key|api_key|token)\\s*=\\s*['\"][^'\"]{8,}['\"]"
+
+- id: django-allowed-hosts-wildcard
+  name: Django ALLOWED_HOSTS set to wildcard
+  severity: high
+  analyzer: config
+  ecosystem: python
+  message: >
+    ALLOWED_HOSTS is set to ['*'] which allows any hostname. This makes
+    your application vulnerable to HTTP Host header attacks.
+  fix: >
+    Set ALLOWED_HOSTS to your actual domain names:
+    ALLOWED_HOSTS = ['yourdomain.com', 'www.yourdomain.com']
+  match:
+    files: ["*.py"]
+    pattern: "ALLOWED_HOSTS\\s*=\\s*\\[.*\\*.*\\]"
+
+- id: cors-allow-all-python
+  name: CORS configured to allow all origins
+  severity: high
+  analyzer: config
+  ecosystem: python
+  message: >
+    CORS is configured to allow requests from any origin (*). This can
+    expose your API to cross-site attacks from malicious websites.
+  fix: >
+    Configure CORS to allow only specific trusted origins instead of using
+    wildcards. Use django-cors-headers with CORS_ALLOWED_ORIGINS list.
+  match:
+    files: ["*.py"]
+    pattern: "CORS_ALLOW_ALL_ORIGINS\\s*=\\s*True|cors\\(.*origin.*\\*|allow_origins.*\\*"

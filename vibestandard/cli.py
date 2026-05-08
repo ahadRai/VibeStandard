@@ -16,6 +16,8 @@ from vibestandard.ingestion.loader import ingest
 from vibestandard.ingestion.file_tree import build_file_tree, detect_ecosystems
 from vibestandard.analyzers.rules_loader import load_all_rules, get_rules_for_analyzer
 from vibestandard.analyzers.dependency import DependencyAnalyzer
+from vibestandard.analyzers.config import ConfigAnalyzer
+from vibestandard.analyzers.security import SecurityAnalyzer
 
 app = typer.Typer(
     name="vibestandard",
@@ -79,10 +81,23 @@ def scan(
     # --- Load rules ---
     all_rules = load_all_rules()
     dependency_rules = get_rules_for_analyzer(all_rules, "dependency")
+    config_rules = get_rules_for_analyzer(all_rules, "config")
     
     # --- Run Dependency Analyzer ---
     dep_analyzer = DependencyAnalyzer(root, file_tree, dependency_rules)
-    findings = dep_analyzer.analyze()
+    dep_findings = dep_analyzer.analyze()
+    
+    # --- Run Config Analyzer ---
+    cfg_analyzer = ConfigAnalyzer(root, file_tree, config_rules)
+    cfg_findings = cfg_analyzer.analyze()
+    
+    # --- Run Security Analyzer ---
+    security_options = {"use_semgrep": not no_semgrep}
+    sec_analyzer = SecurityAnalyzer(root, file_tree, {}, options=security_options)
+    sec_findings = sec_analyzer.analyze()
+    
+    # --- Combine all findings ---
+    findings = dep_findings + cfg_findings + sec_findings
     
     duration = time.time() - start
 

@@ -49,7 +49,7 @@
 - id: ddl-create-drop
   name: JPA DDL auto set to create-drop
   severity: critical
-  analyzer: dependency
+  analyzer: config
   ecosystem: java
   message: >
     spring.jpa.hibernate.ddl-auto=create-drop will DROP and recreate all
@@ -60,3 +60,34 @@
   match:
     files: ["*.properties", "*.yml", "*.yaml"]
     pattern: "ddl-auto\\s*[=:]\\s*create-drop"
+
+- id: h2-in-config
+  name: H2 database URL in configuration
+  severity: critical
+  analyzer: config
+  ecosystem: java
+  message: >
+    Your configuration file contains an H2 database URL (jdbc:h2 or h2:mem).
+    H2 is an in-memory/test database and all data will be lost on restart.
+    This is not suitable for production environments.
+  fix: >
+    Replace the H2 JDBC URL with a PostgreSQL or MySQL connection string.
+    Store database credentials in environment variables, not in config files.
+  match:
+    files: ["*.properties", "*.yml", "*.yaml", "*.env"]
+    pattern: "jdbc:h2|h2:mem"
+
+- id: debug-enabled-java
+  name: Debug mode enabled in Java configuration
+  severity: medium
+  analyzer: config
+  ecosystem: java
+  message: >
+    Debug mode is enabled in your configuration. This can expose sensitive
+    information through detailed error messages and stack traces.
+  fix: >
+    Set 'debug=false' in production configuration or use environment-specific
+    profiles (application-prod.properties) with debug disabled.
+  match:
+    files: ["*.properties", "*.yml", "*.yaml"]
+    pattern: "(?i)debug\\s*[=:]\\s*true"

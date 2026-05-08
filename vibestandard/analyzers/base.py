@@ -6,11 +6,12 @@ class BaseAnalyzer(ABC):
     name: str
     ecosystem: str
 
-    def __init__(self, root: Path, file_tree: list[Path], rules: dict):
+    def __init__(self, root: Path, file_tree: list[Path], rules: dict, options: dict | None = None):
         self.root = root
         self.file_tree = file_tree
         self.rules = rules
         self.findings: list[Finding] = []
+        self.options = options or {}
 
     @abstractmethod
     def analyze(self) -> list[Finding]:
