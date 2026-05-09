@@ -18,6 +18,7 @@ from vibestandard.analyzers.rules_loader import load_all_rules, get_rules_for_an
 from vibestandard.analyzers.dependency import DependencyAnalyzer
 from vibestandard.analyzers.config import ConfigAnalyzer
 from vibestandard.analyzers.security import SecurityAnalyzer
+from vibestandard.analyzers.infra import InfraAnalyzer
 
 app = typer.Typer(
     name="vibestandard",
@@ -96,8 +97,12 @@ def scan(
     sec_analyzer = SecurityAnalyzer(root, file_tree, {}, options=security_options)
     sec_findings = sec_analyzer.analyze()
     
+    # --- Run Infra Analyzer ---
+    infra_analyzer = InfraAnalyzer(root, file_tree, {})
+    infra_findings = infra_analyzer.analyze()
+    
     # --- Combine all findings ---
-    findings = dep_findings + cfg_findings + sec_findings
+    findings = dep_findings + cfg_findings + sec_findings + infra_findings
     
     duration = time.time() - start
 
