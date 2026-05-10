@@ -20,6 +20,7 @@ from vibestandard.analyzers.config import ConfigAnalyzer
 from vibestandard.analyzers.security import SecurityAnalyzer
 from vibestandard.analyzers.infra import InfraAnalyzer
 from vibestandard.analyzers.observability import ObservabilityAnalyzer
+from vibestandard.engine.scorer import ScoringEngine
 
 app = typer.Typer(
     name="vibestandard",
@@ -107,43 +108,60 @@ def scan(
     obs_findings = obs_analyzer.analyze()
     
     # --- Combine all findings ---
-    findings = dep_findings + cfg_findings + sec_findings + infra_findings + obs_findings
+    all_findings = dep_findings + cfg_findings + sec_findings + infra_findings + obs_findings
+    analyzer_errors = []  # Will be populated if any analyzer fails
+    
+    # --- Run Scoring Engine ---
+    metadata = {
+        "scanned_path": str(root),
+        "ecosystems": list(ecosystems),
+        "total_files": len(file_tree),
+        "duration_seconds": 0.0,  # Will be updated after timing
+        "skipped_files": 0,
+        "analyzer_errors": analyzer_errors
+    }
+    
+    engine = ScoringEngine()
+    result = engine.score(all_findings, metadata)
     
     duration = time.time() - start
+    result.duration_seconds = duration
+    metadata["duration_seconds"] = duration
 
     # --- Display findings ---
     console.print()
     
-    if findings:
-        # Sort findings by severity
-        severity_order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
-        findings.sort(key=lambda f: severity_order.get(f.severity, 4))
-        
-        # Summary
-        severity_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
-        for f in findings:
-            severity_counts[f.severity] = severity_counts.get(f.severity, 0) + 1
-        
+    if result.findings:
         console.print(
             Panel(
-                f"[bold]Scanned:[/]  {root}\n"
-                f"[bold]Files:[/]    {len(file_tree)} files across "
-                f"{len(ecosystems)} ecosystem(s) ({', '.join(ecosystems) if ecosystems else 'none detected'})\n"
-                f"[bold]Time:[/]     {duration:.1f}s\n"
-                f"[bold]Findings:[/] {len(findings)} issues found\n"
-                f"  [red]Critical:[/] {severity_counts['critical']}  "
-                f"[bold red]High:[/] {severity_counts['high']}  "
-                f"[yellow]Medium:[/] {severity_counts['medium']}  "
-                f"[dim]Low:[/] {severity_counts['low']}",
+                f"[bold]Scanned:[/]  {result.scanned_path}\n"
+                f"[bold]Files:[/]    {result.total_files} files across "
+                f"{len(result.ecosystems)} ecosystem(s) ({', '.join(result.ecosystems) if result.ecosystems else 'none detected'})\n"
+                f"[bold]Time:[/]     {result.duration_seconds:.1f}s\n"
+                f"[bold]Score:[/]    {result.score}/100 (Grade: {result.grade})\n"
+                f"[bold]Verdict:[/]  {result.vibe_label}\n"
+                f"[bold]Findings:[/] {result.summary['total']} issues found\n"
+                f"  [red]Critical:[/] {result.summary['critical']}  "
+                f"[bold red]High:[/] {result.summary['high']}  "
+                f"[yellow]Medium:[/] {result.summary['medium']}  "
+                f"[dim]Low:[/] {result.summary['low']}",
                 title="[bold cyan]VibeStandard Scan[/]",
                 border_style="cyan",
             )
         )
         console.print()
         
+        # Show score adjustments if any
+        if result.adjustments_applied:
+            console.print("[bold]Score Adjustments:[/]")
+            for adj in result.adjustments_applied:
+                delta_str = f"+{adj['delta']}" if adj['delta'] > 0 else str(adj['delta'])
+                console.print(f"  {adj['reason']}: [{ 'green' if adj['delta'] > 0 else 'red'}]{delta_str}[/]")
+            console.print()
+        
         # Detailed findings
         console.print("[bold]Findings:[/]\n")
-        for i, finding in enumerate(findings, 1):
+        for i, finding in enumerate(result.findings, 1):
             severity_color = {
                 "critical": "red",
                 "high": "bold red",
@@ -156,6 +174,7 @@ def scan(
             if finding.line:
                 console.print(f"   [dim]Line:[/] {finding.line}")
             console.print(f"   [dim]Rule:[/] {finding.rule_id}")
+            console.print(f"   [dim]Analyzer:[/] {finding.analyzer}")
             console.print(f"   {finding.message}")
             if finding.fix:
                 console.print(f"   [bold green]Fix:[/] {finding.fix}")
@@ -163,11 +182,13 @@ def scan(
     else:
         console.print(
             Panel(
-                f"[bold]Scanned:[/]  {root}\n"
-                f"[bold]Files:[/]    {len(file_tree)} files across "
-                f"{len(ecosystems)} ecosystem(s) ({', '.join(ecosystems) if ecosystems else 'none detected'})\n"
-                f"[bold]Time:[/]     {duration:.1f}s\n"
-                f"[bold green]No dependency issues found![/]",
+                f"[bold]Scanned:[/]  {result.scanned_path}\n"
+                f"[bold]Files:[/]    {result.total_files} files across "
+                f"{len(result.ecosystems)} ecosystem(s) ({', '.join(result.ecosystems) if result.ecosystems else 'none detected'})\n"
+                f"[bold]Time:[/]     {result.duration_seconds:.1f}s\n"
+                f"[bold]Score:[/]    {result.score}/100 (Grade: {result.grade})\n"
+                f"[bold]Verdict:[/]  {result.vibe_label}\n"
+                f"[bold green]No issues found![/]",
                 title="[bold cyan]VibeStandard Scan[/]",
                 border_style="cyan",
             )
