@@ -48,9 +48,10 @@ jobs:
           pyinstaller --name vibestandard-${{ matrix.platform }} --onefile --console --add-data "rules:rules" --add-data "vibestandard/reporters/templates:vibestandard/reporters/templates" main.py
 
       - name: Verify binary exists
+        shell: bash
         run: |
           ls -la dist/
-          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+          if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
             test -f dist/vibestandard-${{ matrix.platform }}.exe
           else
             test -f dist/vibestandard-${{ matrix.platform }}
