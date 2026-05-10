@@ -52,8 +52,8 @@ jobs:
             --name vibestandard-${{ matrix.platform }} \
             --onefile \
             --console \
-            --add-data "rules:rules" \
-            --add-data "vibestandard/reporters/templates:vibestandard/reporters/templates" \
+            --add-data "rules${{ matrix.platform == 'windows' && ';' || ':' }}rules" \
+            --add-data "vibestandard/reporters/templates${{ matrix.platform == 'windows' && ';' || ':' }}vibestandard/reporters/templates" \
             main.py
         shell: bash
 
