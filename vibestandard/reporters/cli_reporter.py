@@ -45,6 +45,21 @@ class TerminalReporter(BaseReporter):
                 f"[bold]Skipped:[/]   {self.result.skipped_files} files (binary or unreadable)"
             )
         
+        # Show finding counts summary
+        summary = self.result.summary
+        if summary.get("total", 0) > 0:
+            counts = []
+            if summary.get("critical", 0) > 0:
+                counts.append(f"[bold red]{summary['critical']} critical[/]")
+            if summary.get("high", 0) > 0:
+                counts.append(f"[bold yellow]{summary['high']} high[/]")
+            if summary.get("medium", 0) > 0:
+                counts.append(f"[bold blue]{summary['medium']} medium[/]")
+            if summary.get("low", 0) > 0:
+                counts.append(f"[dim]{summary['low']} low[/]")
+            if counts:
+                self.console.print(f"[bold]Findings:[/]  {', '.join(counts)}")
+        
         self.console.print()
         
         # Section 3 — Score banner
@@ -129,18 +144,23 @@ class TerminalReporter(BaseReporter):
                 self.console.print()
                 
                 # Each finding
-                for finding in sev_findings:
-                    # rule_id and file:line
+                for idx, finding in enumerate(sev_findings, 1):
+                    # Calculate global finding number
+                    global_num = sum(
+                        len([f for f in filtered if f.severity == s])
+                        for s in severity_order[:severity_order.index(severity)]
+                    ) + idx
+                    
+                    # rule_id and file:line with number
                     file_display = f"{finding.file}:{finding.line}" if finding.line else finding.file
                     
                     self.console.print(
-                        f"  [{severity_colors[severity]}]{finding.rule_id}[/]"
-                        f"{' ' * (40 - len(finding.rule_id))}"
-                        f"[dim]{file_display}[/]"
+                        f"  [{severity_colors[severity]}]{global_num}. {finding.rule_id}[/]"
                     )
+                    self.console.print(f"     [dim]{file_display}[/]")
                     
                     # Message
-                    self.console.print(f"  └─ {finding.message}")
+                    self.console.print(f"     {finding.message}")
                     
                     # Fix
                     if finding.fix:
