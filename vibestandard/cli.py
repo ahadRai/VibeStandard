@@ -19,6 +19,7 @@ from vibestandard.analyzers.dependency import DependencyAnalyzer
 from vibestandard.analyzers.config import ConfigAnalyzer
 from vibestandard.analyzers.security import SecurityAnalyzer
 from vibestandard.analyzers.infra import InfraAnalyzer
+from vibestandard.analyzers.observability import ObservabilityAnalyzer
 
 app = typer.Typer(
     name="vibestandard",
@@ -101,8 +102,12 @@ def scan(
     infra_analyzer = InfraAnalyzer(root, file_tree, {})
     infra_findings = infra_analyzer.analyze()
     
+    # --- Run Observability Analyzer ---
+    obs_analyzer = ObservabilityAnalyzer(root, file_tree, {})
+    obs_findings = obs_analyzer.analyze()
+    
     # --- Combine all findings ---
-    findings = dep_findings + cfg_findings + sec_findings + infra_findings
+    findings = dep_findings + cfg_findings + sec_findings + infra_findings + obs_findings
     
     duration = time.time() - start
 
