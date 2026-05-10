@@ -52,6 +52,9 @@ _ECOSYSTEM_MARKERS: dict[str, set[str]] = {
         "package.json", "package-lock.json", "yarn.lock",
         "pnpm-lock.yaml", "tsconfig.json",
     },
+    "go": {
+        "go.mod", "go.sum", "Gopkg.toml", "Gopkg.lock",
+    },
     "docker": {
         "Dockerfile", "docker-compose.yml", "docker-compose.yaml",
         ".dockerignore",
@@ -63,6 +66,7 @@ _ECOSYSTEM_EXTENSIONS: dict[str, set[str]] = {
     "java": {".java", ".kt", ".kts"},
     "python": {".py"},
     "node": {".js", ".ts", ".jsx", ".tsx"},
+    "go": {".go"},
 }
 
 

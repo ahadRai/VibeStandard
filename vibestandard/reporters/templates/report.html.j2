@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VibeStandard Report - {{ result.scanned_path }}</title>
+    <style>
+        :root {
+            --color-critical: #dc2626;
+            --color-high: #f59e0b;
+            --color-medium: #3b82f6;
+            --color-low: #6b7280;
+            --color-success: #10b981;
+            --bg-critical: #fff5f5;
+            --bg-high: #fffbeb;
+            --bg-medium: #eff6ff;
+            --bg-low: #ffffff;
+            --text-primary: #111827;
+            --text-secondary: #6b7280;
+            --border-color: #e5e7eb;
+            --bg-page: #f9fafb;
+            --bg-card: #ffffff;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+            background: var(--bg-page);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 0;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+        
+        /* Header */
+        .header {
+            background: {% if result.grade in ['A', 'B'] %}var(--color-success){% elif result.grade == 'C' %}var(--color-high){% else %}var(--color-critical){% endif %};
+            color: white;
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        
+        .header-logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        
+        .header-meta {
+            text-align: right;
+            font-size: 0.875rem;
+        }
+        
+        /* Score Hero */
+        .score-hero {
+            background: var(--bg-card);
+            border-radius: 8px;
+            padding: 3rem 2rem;
+            text-align: center;
+            margin: 2rem 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .gauge-container {
+            position: relative;
+            width: 200px;
+            height: 200px;
+            margin: 0 auto 2rem;
+        }
+        
+        .gauge-svg {
+            transform: rotate(-90deg);
+        }
+        
+        .gauge-bg {
+            fill: none;
+            stroke: var(--border-color);
+            stroke-width: 12;
+        }
+        
+        .gauge-fill {
+            fill: none;
+            stroke-width: 12;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.5s ease;
+        }
+        
+        .gauge-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+        
+        .gauge-score {
+            font-size: 3rem;
+            font-weight: bold;
+            color: var(--text-primary);
+        }
+        
+        .gauge-grade {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-top: 0.5rem;
+        }
+        
+        .vibe-badge {
+            display: inline-block;
+            padding: 0.5rem 1.5rem;
+            border-radius: 9999px;
+            font-weight: 600;
+            font-size: 1.125rem;
+            margin-top: 1rem;
+        }
+        
+        .adjustments {
+            margin-top: 1.5rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            justify-content: center;
+        }
+        
+        .adjustment-pill {
+            background: var(--bg-page);
+            padding: 0.375rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+        
+        /* Summary Cards */
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+        
+        .summary-card {
+            background: var(--bg-card);
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .summary-card.critical { background: var(--bg-critical); }
+        .summary-card.high { background: var(--bg-high); }
+        .summary-card.medium { background: var(--bg-medium); }
+        .summary-card.low { background: var(--bg-low); }
+        
+        .summary-count {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+        
+        .summary-label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        /* Analyzer Breakdown */
+        .analyzer-section {
+            background: var(--bg-card);
+            border-radius: 8px;
+            padding: 2rem;
+            margin: 2rem 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 1.5rem;
+        }
+        
+        .analyzer-bar {
+            margin-bottom: 1rem;
+        }
+        
+        .analyzer-label {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        
+        .bar-container {
+            background: var(--bg-page);
+            border-radius: 4px;
+            height: 24px;
+            overflow: hidden;
+            display: flex;
+        }
+        
+        .bar-segment {
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+        
+        .bar-segment.critical { background: var(--color-critical); }
+        .bar-segment.high { background: var(--color-high); }
+        .bar-segment.medium { background: var(--color-medium); }
+        .bar-segment.low { background: var(--color-low); }
+        
+        /* Findings Table */
+        .findings-section {
+            background: var(--bg-card);
+            border-radius: 8px;
+            padding: 2rem;
+            margin: 2rem 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .filter-bar {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .filter-btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--border-color);
+            background: var(--bg-card);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+        
+        .filter-btn:hover {
+            background: var(--bg-page);
+        }
+        
+        .filter-btn.active {
+            background: var(--text-primary);
+            color: white;
+            border-color: var(--text-primary);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        
+        th {
+            text-align: left;
+            padding: 0.75rem;
+            border-bottom: 2px solid var(--border-color);
+            cursor: pointer;
+            user-select: none;
+            font-weight: 600;
+        }
+        
+        th:hover {
+            background: var(--bg-page);
+        }
+        
+        td {
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        tr.row-critical { background: var(--bg-critical); }
+        tr.row-high { background: var(--bg-high); }
+        tr.row-medium { background: var(--bg-medium); }
+        tr.row-low { background: var(--bg-low); }
+        
+        .severity-badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .severity-badge.critical { background: var(--color-critical); color: white; }
+        .severity-badge.high { background: var(--color-high); color: white; }
+        .severity-badge.medium { background: var(--color-medium); color: white; }
+        .severity-badge.low { background: var(--color-low); color: white; }
+        
+        details {
+            margin-top: 0.5rem;
+        }
+        
+        summary {
+            cursor: pointer;
+            color: var(--color-success);
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+        
+        details[open] summary {
+            margin-bottom: 0.5rem;
+        }
+        
+        .fix-text {
+            background: var(--bg-page);
+            padding: 0.75rem;
+            border-radius: 4px;
+            font-size: 0.875rem;
+        }
+        
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem 0.5rem;
+            }
+            
+            .header {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .header-meta {
+                text-align: center;
+            }
+            
+            table {
+                font-size: 0.875rem;
+            }
+            
+            th, td {
+                padding: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-logo">VibeStandard</div>
+        <div class="header-meta">
+            <div>{{ result.scanned_path }}</div>
+            <div>{{ timestamp }}</div>
+        </div>
+    </div>
+    
+    <div class="container">
+        <!-- Score Hero -->
+        <div class="score-hero">
+            <div class="gauge-container">
+                <svg class="gauge-svg" width="200" height="200">
+                    <circle class="gauge-bg" cx="100" cy="100" r="80"></circle>
+                    <circle class="gauge-fill" cx="100" cy="100" r="80"
+                            stroke="{% if result.score >= 75 %}var(--color-success){% elif result.score >= 55 %}var(--color-high){% else %}var(--color-critical){% endif %}"
+                            stroke-dasharray="{{ gauge_circumference }}"
+                            stroke-dashoffset="{{ gauge_offset }}"></circle>
+                </svg>
+                <div class="gauge-text">
+                    <div class="gauge-score">{{ result.score }}</div>
+                    <div class="gauge-grade">Grade: {{ result.grade }}</div>
+                </div>
+            </div>
+            <div class="vibe-badge">{{ result.vibe_label }}</div>
+            {% if result.adjustments_applied %}
+            <div class="adjustments">
+                {% for adj in result.adjustments_applied %}
+                <span class="adjustment-pill">{{ adj.reason }} ({{ '+' if adj.delta > 0 }}{{ adj.delta }})</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Summary Cards -->
+        <div class="summary-cards">
+            <div class="summary-card critical">
+                <div class="summary-count" style="color: var(--color-critical)">{{ result.summary.critical }}</div>
+                <div class="summary-label">Critical</div>
+            </div>
+            <div class="summary-card high">
+                <div class="summary-count" style="color: var(--color-high)">{{ result.summary.high }}</div>
+                <div class="summary-label">High</div>
+            </div>
+            <div class="summary-card medium">
+                <div class="summary-count" style="color: var(--color-medium)">{{ result.summary.medium }}</div>
+                <div class="summary-label">Medium</div>
+            </div>
+            <div class="summary-card low">
+                <div class="summary-count" style="color: var(--color-low)">{{ result.summary.low }}</div>
+                <div class="summary-label">Low</div>
+            </div>
+        </div>
+        
+        <!-- Analyzer Breakdown -->
+        <div class="analyzer-section">
+            <h2 class="section-title">Analyzer Breakdown</h2>
+            {% for analyzer, data in result.analyzer_breakdown.items() %}
+            <div class="analyzer-bar">
+                <div class="analyzer-label">{{ analyzer }} ({{ data.total }} findings)</div>
+                <div class="bar-container">
+                    {% if data.total > 0 %}
+                    <div class="bar-segment critical" style="width: {{ (data.critical / data.total * 100) if data.total > 0 else 0 }}%"></div>
+                    <div class="bar-segment high" style="width: {{ (data.high / data.total * 100) if data.total > 0 else 0 }}%"></div>
+                    <div class="bar-segment medium" style="width: {{ (data.medium / data.total * 100) if data.total > 0 else 0 }}%"></div>
+                    <div class="bar-segment low" style="width: {{ (data.low / data.total * 100) if data.total > 0 else 0 }}%"></div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <!-- Findings Table -->
+        <div class="findings-section">
+            <h2 class="section-title">Findings</h2>
+            <div class="filter-bar">
+                <button class="filter-btn active" data-filter="all">All ({{ result.summary.total }})</button>
+                <button class="filter-btn" data-filter="critical">Critical ({{ result.summary.critical }})</button>
+                <button class="filter-btn" data-filter="high">High ({{ result.summary.high }})</button>
+                <button class="filter-btn" data-filter="medium">Medium ({{ result.summary.medium }})</button>
+                <button class="filter-btn" data-filter="low">Low ({{ result.summary.low }})</button>
+            </div>
+            <table id="findings-table">
+                <thead>
+                    <tr>
+                        <th data-column="severity">Severity</th>
+                        <th data-column="rule_id">Rule</th>
+                        <th data-column="file">File</th>
+                        <th data-column="line">Line</th>
+                        <th data-column="analyzer">Analyzer</th>
+                        <th>Message</th>
+                        <th>Fix</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for finding in findings %}
+                    <tr class="row-{{ finding.severity }}" data-severity="{{ finding.severity }}">
+                        <td><span class="severity-badge {{ finding.severity }}">{{ finding.severity }}</span></td>
+                        <td><strong>{{ finding.rule_id }}</strong></td>
+                        <td>{{ finding.file }}</td>
+                        <td>{{ finding.line if finding.line else 'N/A' }}</td>
+                        <td>{{ finding.analyzer }}</td>
+                        <td>{{ finding.message[:100] }}{% if finding.message|length > 100 %}...{% endif %}</td>
+                        <td>
+                            {% if finding.fix %}
+                            <details>
+                                <summary>Show fix ▼</summary>
+                                <div class="fix-text">{{ finding.fix }}</div>
+                            </details>
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer">
+            <p>Total files: {{ result.total_files }} | Duration: {{ "%.1f"|format(result.duration_seconds) }}s | Skipped: {{ result.skipped_files }}</p>
+            <p>Generated by VibeStandard v{{ version }} at {{ timestamp }}</p>
+        </div>
+    </div>
+    
+    <script>
+        // Filter functionality
+        const filterBtns = document.querySelectorAll('.filter-btn');
+        const rows = document.querySelectorAll('#findings-table tbody tr');
+        
+        filterBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                filterBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                const filter = btn.dataset.filter;
+                rows.forEach(row => {
+                    if (filter === 'all' || row.dataset.severity === filter) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                });
+            });
+        });
+        
+        // Sort functionality
+        const headers = document.querySelectorAll('#findings-table th[data-column]');
+        let sortColumn = null;
+        let sortAsc = true;
+        
+        headers.forEach(header => {
+            header.addEventListener('click', () => {
+                const column = header.dataset.column;
+                
+                if (sortColumn === column) {
+                    sortAsc = !sortAsc;
+                } else {
+                    sortColumn = column;
+                    sortAsc = true;
+                }
+                
+                const tbody = document.querySelector('#findings-table tbody');
+                const rowsArray = Array.from(rows);
+                
+                rowsArray.sort((a, b) => {
+                    const aVal = a.querySelector(`td:nth-child(${getColumnIndex(column)})`).textContent;
+                    const bVal = b.querySelector(`td:nth-child(${getColumnIndex(column)})`).textContent;
+                    
+                    if (column === 'line') {
+                        const aNum = aVal === 'N/A' ? Infinity : parseInt(aVal);
+                        const bNum = bVal === 'N/A' ? Infinity : parseInt(bVal);
+                        return sortAsc ? aNum - bNum : bNum - aNum;
+                    }
+                    
+                    return sortAsc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+                });
+                
+                rowsArray.forEach(row => tbody.appendChild(row));
+            });
+        });
+        
+        function getColumnIndex(column) {
+            const columns = ['severity', 'rule_id', 'file', 'line', 'analyzer'];
+            return columns.indexOf(column) + 1;
+        }
+    </script>
+</body>
+</html>

@@ -11,6 +11,7 @@ import re
 from pathlib import Path
 
 from vibestandard.analyzers.base import BaseAnalyzer
+from vibestandard.analyzers.ecosystem_fixes import get_ecosystem_fix
 from vibestandard.models import Finding
 
 # Files and directories to skip
@@ -27,13 +28,13 @@ OBS_RULES = {
         "name": "No structured logging library",
         "severity": "medium",
         "message": "No structured logging library found. The application appears to use print() statements for output. In production, print() output is unstructured, unsearchable, and often lost entirely depending on how the process is managed.",
-        "fix": "Add a structured logging library. For Python use loguru (pip install loguru) or the built-in logging module with a JSON formatter. Replace print() calls with logger.info(), logger.error() etc. Configure log level from an environment variable: LOG_LEVEL=INFO."
+        "fix": ""  # Will be populated dynamically based on ecosystem
     },
     "no-error-tracking": {
         "name": "No error tracking service",
         "severity": "medium",
         "message": "No error tracking service detected. Unhandled exceptions in production will be silent — you will only learn about errors from user complaints.",
-        "fix": "Integrate Sentry — it has a generous free tier and takes under 5 minutes to add. Install with: pip install sentry-sdk. Then add to your app initialization: import sentry_sdk; sentry_sdk.init(dsn=os.environ.get('SENTRY_DSN'))"
+        "fix": ""  # Will be populated dynamically based on ecosystem
     },
     "no-health-endpoint": {
         "name": "No health check endpoint",
@@ -63,7 +64,7 @@ OBS_RULES = {
         "name": "No metrics instrumentation",
         "severity": "low",
         "message": "No metrics instrumentation found. Without metrics you cannot track response times, error rates, or throughput — the three signals needed to understand production performance.",
-        "fix": "Add prometheus_client for Python: pip install prometheus-client. Expose a /metrics endpoint and track at minimum: request count, request duration, and error rate. Connect to Grafana for dashboards."
+        "fix": ""  # Will be populated dynamically based on ecosystem
     },
     "no-graceful-shutdown": {
         "name": "No graceful shutdown handling",
@@ -111,17 +112,23 @@ class ObservabilityAnalyzer(BaseAnalyzer):
         return self.findings
     
     def _add_obs_finding(self, rule_id: str, file: str | None = None, line: int | None = None) -> None:
-        """Add an observability finding."""
+        """Add an observability finding with ecosystem-aware fix."""
         rule = OBS_RULES.get(rule_id)
         if not rule:
             return
+        
+        # Get ecosystem-aware fix message
+        fix = rule["fix"]
+        if not fix:
+            # Dynamically generate fix based on detected ecosystems
+            fix = get_ecosystem_fix(rule_id, self.ecosystems)
         
         finding = Finding(
             rule_id=rule_id,
             name=rule["name"],
             severity=rule["severity"],
             message=rule["message"],
-            fix=rule["fix"],
+            fix=fix,
             file=file or "N/A",
             line=line,
             analyzer=self.name,

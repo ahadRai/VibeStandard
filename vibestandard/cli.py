@@ -10,6 +10,7 @@ from typing import Optional
 import typer
 from rich.console import Console
 from rich.panel import Panel
+from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from vibestandard import __version__
 from vibestandard.ingestion.loader import ingest
@@ -21,6 +22,9 @@ from vibestandard.analyzers.security import SecurityAnalyzer
 from vibestandard.analyzers.infra import InfraAnalyzer
 from vibestandard.analyzers.observability import ObservabilityAnalyzer
 from vibestandard.engine.scorer import ScoringEngine
+from vibestandard.reporters.cli_reporter import TerminalReporter
+from vibestandard.reporters.json_reporter import JsonReporter
+from vibestandard.reporters.html_reporter import HtmlReporter
 
 app = typer.Typer(
     name="vibestandard",
@@ -86,37 +90,72 @@ def scan(
     dependency_rules = get_rules_for_analyzer(all_rules, "dependency")
     config_rules = get_rules_for_analyzer(all_rules, "config")
     
-    # --- Run Dependency Analyzer ---
-    dep_analyzer = DependencyAnalyzer(root, file_tree, dependency_rules)
-    dep_findings = dep_analyzer.analyze()
+    # --- Run analyzers with progress bar ---
+    all_findings = []
+    analyzer_errors = []
     
-    # --- Run Config Analyzer ---
-    cfg_analyzer = ConfigAnalyzer(root, file_tree, config_rules)
-    cfg_findings = cfg_analyzer.analyze()
-    
-    # --- Run Security Analyzer ---
-    security_options = {"use_semgrep": not no_semgrep}
-    sec_analyzer = SecurityAnalyzer(root, file_tree, {}, options=security_options)
-    sec_findings = sec_analyzer.analyze()
-    
-    # --- Run Infra Analyzer ---
-    infra_analyzer = InfraAnalyzer(root, file_tree, {})
-    infra_findings = infra_analyzer.analyze()
-    
-    # --- Run Observability Analyzer ---
-    obs_analyzer = ObservabilityAnalyzer(root, file_tree, {})
-    obs_findings = obs_analyzer.analyze()
-    
-    # --- Combine all findings ---
-    all_findings = dep_findings + cfg_findings + sec_findings + infra_findings + obs_findings
-    analyzer_errors = []  # Will be populated if any analyzer fails
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        transient=True,
+    ) as progress:
+        # Task 1: Dependency Analyzer
+        task1 = progress.add_task("Running dependency analyzer...", total=None)
+        try:
+            dep_analyzer = DependencyAnalyzer(root, file_tree, dependency_rules, ecosystems=list(ecosystems))
+            dep_findings = dep_analyzer.analyze()
+            all_findings.extend(dep_findings)
+        except Exception as e:
+            analyzer_errors.append({"analyzer": "dependency", "error": str(e)})
+        progress.update(task1, description="[green]✓[/] Dependency analyzer complete")
+        
+        # Task 2: Config Analyzer
+        task2 = progress.add_task("Running config analyzer...", total=None)
+        try:
+            cfg_analyzer = ConfigAnalyzer(root, file_tree, config_rules, ecosystems=list(ecosystems))
+            cfg_findings = cfg_analyzer.analyze()
+            all_findings.extend(cfg_findings)
+        except Exception as e:
+            analyzer_errors.append({"analyzer": "config", "error": str(e)})
+        progress.update(task2, description="[green]✓[/] Config analyzer complete")
+        
+        # Task 3: Security Analyzer
+        task3 = progress.add_task("Running security analyzer...", total=None)
+        try:
+            security_options = {"use_semgrep": not no_semgrep}
+            sec_analyzer = SecurityAnalyzer(root, file_tree, {}, options=security_options, ecosystems=list(ecosystems))
+            sec_findings = sec_analyzer.analyze()
+            all_findings.extend(sec_findings)
+        except Exception as e:
+            analyzer_errors.append({"analyzer": "security", "error": str(e)})
+        progress.update(task3, description="[green]✓[/] Security analyzer complete")
+        
+        # Task 4: Infra Analyzer
+        task4 = progress.add_task("Running infra analyzer...", total=None)
+        try:
+            infra_analyzer = InfraAnalyzer(root, file_tree, {}, ecosystems=list(ecosystems))
+            infra_findings = infra_analyzer.analyze()
+            all_findings.extend(infra_findings)
+        except Exception as e:
+            analyzer_errors.append({"analyzer": "infra", "error": str(e)})
+        progress.update(task4, description="[green]✓[/] Infra analyzer complete")
+        
+        # Task 5: Observability Analyzer
+        task5 = progress.add_task("Running observability analyzer...", total=None)
+        try:
+            obs_analyzer = ObservabilityAnalyzer(root, file_tree, {}, ecosystems=list(ecosystems))
+            obs_findings = obs_analyzer.analyze()
+            all_findings.extend(obs_findings)
+        except Exception as e:
+            analyzer_errors.append({"analyzer": "observability", "error": str(e)})
+        progress.update(task5, description="[green]✓[/] Observability analyzer complete")
     
     # --- Run Scoring Engine ---
     metadata = {
         "scanned_path": str(root),
         "ecosystems": list(ecosystems),
         "total_files": len(file_tree),
-        "duration_seconds": 0.0,  # Will be updated after timing
+        "duration_seconds": 0.0,
         "skipped_files": 0,
         "analyzer_errors": analyzer_errors
     }
@@ -128,73 +167,28 @@ def scan(
     result.duration_seconds = duration
     metadata["duration_seconds"] = duration
 
-    # --- Display findings ---
-    console.print()
+    # --- Render using selected reporter ---
+    reporters = {
+        "terminal": TerminalReporter,
+        "json": JsonReporter,
+        "html": HtmlReporter,
+    }
     
-    if result.findings:
-        console.print(
-            Panel(
-                f"[bold]Scanned:[/]  {result.scanned_path}\n"
-                f"[bold]Files:[/]    {result.total_files} files across "
-                f"{len(result.ecosystems)} ecosystem(s) ({', '.join(result.ecosystems) if result.ecosystems else 'none detected'})\n"
-                f"[bold]Time:[/]     {result.duration_seconds:.1f}s\n"
-                f"[bold]Score:[/]    {result.score}/100 (Grade: {result.grade})\n"
-                f"[bold]Verdict:[/]  {result.vibe_label}\n"
-                f"[bold]Findings:[/] {result.summary['total']} issues found\n"
-                f"  [red]Critical:[/] {result.summary['critical']}  "
-                f"[bold red]High:[/] {result.summary['high']}  "
-                f"[yellow]Medium:[/] {result.summary['medium']}  "
-                f"[dim]Low:[/] {result.summary['low']}",
-                title="[bold cyan]VibeStandard Scan[/]",
-                border_style="cyan",
-            )
-        )
-        console.print()
-        
-        # Show score adjustments if any
-        if result.adjustments_applied:
-            console.print("[bold]Score Adjustments:[/]")
-            for adj in result.adjustments_applied:
-                delta_str = f"+{adj['delta']}" if adj['delta'] > 0 else str(adj['delta'])
-                console.print(f"  {adj['reason']}: [{ 'green' if adj['delta'] > 0 else 'red'}]{delta_str}[/]")
-            console.print()
-        
-        # Detailed findings
-        console.print("[bold]Findings:[/]\n")
-        for i, finding in enumerate(result.findings, 1):
-            severity_color = {
-                "critical": "red",
-                "high": "bold red",
-                "medium": "yellow",
-                "low": "dim",
-            }.get(finding.severity, "white")
-            
-            console.print(f"[bold]{i}.[/] [{severity_color}]{finding.severity.upper()}[/] {finding.name}")
-            console.print(f"   [dim]File:[/] {finding.file}")
-            if finding.line:
-                console.print(f"   [dim]Line:[/] {finding.line}")
-            console.print(f"   [dim]Rule:[/] {finding.rule_id}")
-            console.print(f"   [dim]Analyzer:[/] {finding.analyzer}")
-            console.print(f"   {finding.message}")
-            if finding.fix:
-                console.print(f"   [bold green]Fix:[/] {finding.fix}")
-            console.print()
-    else:
-        console.print(
-            Panel(
-                f"[bold]Scanned:[/]  {result.scanned_path}\n"
-                f"[bold]Files:[/]    {result.total_files} files across "
-                f"{len(result.ecosystems)} ecosystem(s) ({', '.join(result.ecosystems) if result.ecosystems else 'none detected'})\n"
-                f"[bold]Time:[/]     {result.duration_seconds:.1f}s\n"
-                f"[bold]Score:[/]    {result.score}/100 (Grade: {result.grade})\n"
-                f"[bold]Verdict:[/]  {result.vibe_label}\n"
-                f"[bold green]No issues found![/]",
-                title="[bold cyan]VibeStandard Scan[/]",
-                border_style="cyan",
-            )
-        )
+    reporter_class = reporters.get(output, TerminalReporter)
+    reporter = reporter_class(result=result, options={
+        "severity_filter": severity,
+        "output_file": output_file,
+        "fail_on": fail_on,
+    })
+    reporter.render()
     
-    console.print()
+    # --- Handle --fail-on exit code ---
+    if fail_on:
+        rank = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+        threshold = rank[fail_on]
+        worst = min((rank[f.severity] for f in result.findings), default=99)
+        if worst <= threshold:
+            raise typer.Exit(code=1)
 
 
 # ---------------------------------------------------------------------------
