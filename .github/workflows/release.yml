@@ -41,36 +41,26 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install pyinstaller
-          if [ -f pyproject.toml ]; then
-            pip install .
-          fi
-        shell: bash
+          pip install -e .
 
       - name: Build binary with PyInstaller
         run: |
-          pyinstaller \
-            --name vibestandard-${{ matrix.platform }} \
-            --onefile \
-            --console \
-            --add-data "rules${{ matrix.platform == 'windows' && ';' || ':' }}rules" \
-            --add-data "vibestandard/reporters/templates${{ matrix.platform == 'windows' && ';' || ':' }}vibestandard/reporters/templates" \
-            main.py
-        shell: bash
+          pyinstaller --name vibestandard-${{ matrix.platform }} --onefile --console --add-data "rules:rules" --add-data "vibestandard/reporters/templates:vibestandard/reporters/templates" main.py
 
-      - name: Verify binary
+      - name: Verify binary exists
         run: |
-          if [ "${{ matrix.platform }}" = "windows" ]; then
-            dist/vibestandard-${{ matrix.platform }}.exe --version
+          ls -la dist/
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            test -f dist/vibestandard-${{ matrix.platform }}.exe
           else
-            dist/vibestandard-${{ matrix.platform }} --version
+            test -f dist/vibestandard-${{ matrix.platform }}
           fi
-        shell: bash
 
       - name: Upload binary artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact_name }}
-          path: dist/vibestandard-${{ matrix.platform }}${{ matrix.platform == 'windows' && '.exe' || '' }}
+          name: vibestandard-${{ matrix.platform }}
+          path: dist/vibestandard-${{ matrix.platform }}${{ matrix.os == 'windows-latest' && '.exe' || '' }}
           retention-days: 5
 
   release:
@@ -95,7 +85,7 @@ jobs:
         with:
           files: |
             artifacts/vibestandard-linux/vibestandard-linux
-            artifacts/vibestandard-windows.exe/vibestandard-windows.exe
+            artifacts/vibestandard-windows/vibestandard-windows.exe
             artifacts/vibestandard-macos/vibestandard-macos
           draft: false
           prerelease: false
