@@ -222,7 +222,8 @@ class TerminalReporter(BaseReporter):
         self.console.print(Rule())
         self.console.print("[dim]Run with --output html to generate a shareable report.[/]")
         self.console.print("[dim]Run with --output json for CI integration.[/]")
-        self.console.print(f"[dim]vibestandard v0.1.0[/]")
+        self.console.print(f"[dim]vibestandard v1.0.1[/]")
+        self.console.print(f"[bold blue]Web Experience Coming Soon![/]")
         
         # Fail-on warning
         fail_on = self.options.get("fail_on")
