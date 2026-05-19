@@ -25,11 +25,11 @@ export function SearchBar({ isLoading = false, onScanComplete, onScanStart }) {
       return;
     }
 
-    if (onScanStart) onScanStart();
-    await startScan(url);
+    if (onScanStart) onScanStart(url);
+    const result = await startScan(url);
     
-    if (scanState.status === 'complete' && onScanComplete) {
-      onScanComplete(scanState.result);
+    if (result && onScanComplete) {
+      onScanComplete(result);
     }
   };
 

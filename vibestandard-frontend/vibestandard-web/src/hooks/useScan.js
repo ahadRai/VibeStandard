@@ -31,12 +31,15 @@ export function useScan() {
 
       if (finalStatus.status === "complete") {
         setScanState(prev => ({ ...prev, status: "complete", result: finalStatus.result, progressMessage: "Scan complete" }));
+        return finalStatus.result;
       } else {
         setScanState(prev => ({ ...prev, status: "failed", error: finalStatus.error || "Scan failed" }));
+        return null;
       }
     } catch (err) {
       const message = err instanceof ApiError ? err.message : "Unexpected error. Please try again.";
       setScanState(prev => ({ ...prev, status: "failed", error: message }));
+      return null;
     }
   }, []);
 

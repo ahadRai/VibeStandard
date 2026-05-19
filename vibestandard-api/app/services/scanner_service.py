@@ -108,28 +108,27 @@ class ScannerService:
 
     def _execute_vibestandard_scan(self, clone_path: Path):
         """Import and call VibeStandard core directly (not as subprocess)."""
-        from vibestandard.ingestion.loader import load_path
-        from vibestandard.ingestion.file_tree import FileTree
+        from vibestandard.ingestion.file_tree import build_file_tree, detect_ecosystems
         from vibestandard.analyzers.dependency import DependencyAnalyzer
         from vibestandard.analyzers.config import ConfigAnalyzer
         from vibestandard.analyzers.security import SecurityAnalyzer
         from vibestandard.analyzers.infra import InfraAnalyzer
         from vibestandard.analyzers.observability import ObservabilityAnalyzer
         from vibestandard.engine.scorer import ScoringEngine
-        from vibestandard.engine.rules_loader import load_rules
+        from vibestandard.analyzers.rules_loader import load_all_rules
         import concurrent.futures
         
         start = time.time()
-        rules = load_rules()
-        file_tree = FileTree(clone_path)
-        files = file_tree.walk()
+        rules = load_all_rules()
+        files = build_file_tree(clone_path)
+        ecosystems = detect_ecosystems(files)
         
         analyzers = [
-            DependencyAnalyzer(clone_path, files, rules),
-            ConfigAnalyzer(clone_path, files, rules),
-            SecurityAnalyzer(clone_path, files, rules),
-            InfraAnalyzer(clone_path, files, rules),
-            ObservabilityAnalyzer(clone_path, files, rules),
+            DependencyAnalyzer(clone_path, files, rules, ecosystems=ecosystems),
+            ConfigAnalyzer(clone_path, files, rules, ecosystems=ecosystems),
+            SecurityAnalyzer(clone_path, files, rules, ecosystems=ecosystems),
+            InfraAnalyzer(clone_path, files, rules, ecosystems=ecosystems),
+            ObservabilityAnalyzer(clone_path, files, rules, ecosystems=ecosystems),
         ]
         
         all_findings = []
@@ -145,10 +144,10 @@ class ScannerService:
         
         metadata = {
             "scanned_path": str(clone_path),
-            "ecosystems": file_tree.detected_ecosystems,
-            "total_files": file_tree.total_files,
+            "ecosystems": ecosystems,
+            "total_files": len(files),
             "duration_seconds": time.time() - start,
-            "skipped_files": file_tree.skipped_files,
+            "skipped_files": 0,
             "analyzer_errors": analyzer_errors
         }
         

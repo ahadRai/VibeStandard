@@ -1,9 +1,10 @@
 FROM python:3.13-slim
 
-# Install git — required for GitPython to clone repos
+# Install git and build tools — required for GitPython and building pydantic-core
 RUN apt-get update && apt-get install -y \
     git \
     curl \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 # Install semgrep
@@ -17,11 +18,11 @@ COPY ../vibestandard-analyzers /vibestandard-analyzers
 RUN pip install /vibestandard-analyzers --no-cache-dir
 
 # Copy and install API requirements
-COPY requirements.txt .
+COPY vibestandard-api/requirements.txt .
 RUN pip install -r requirements.txt --no-cache-dir
 
 # Copy API source
-COPY . .
+COPY vibestandard-api/ .
 
 # Create clone directory
 RUN mkdir -p /tmp/vibestandard-clones
