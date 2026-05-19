@@ -13,4 +13,22 @@ TODO.md
 info.md
 guideline.md
 prompts/
+tasks/
 
+# Node
+node_modules/
+.vite/
+
+# Environment
+.env
+!.env.example
+
+# Docker
+.docker/
+
+# Cloned repos (never commit these)
+/tmp/vibestandard-clones/
+
+# OS
+.DS_Store
+Thumbs.db

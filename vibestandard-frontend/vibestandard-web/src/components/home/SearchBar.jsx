@@ -1,29 +1,41 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useScan } from '../../hooks/useScan';
 
-export function SearchBar({ isLoading = false }) {
+export function SearchBar({ isLoading = false, onScanComplete, onScanStart }) {
   const [url, setUrl] = useState('');
   const [error, setError] = useState('');
   const [shake, setShake] = useState(false);
+  const { scanState, startScan, reset } = useScan();
 
   const validateGitHubUrl = (input) => {
     const urlPattern = /^https:\/\/github\.com\/[^/]+\/[^/]+/;
     return urlPattern.test(input);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
-    if (!validateGitHubUrl(url)) {
+    const urlPattern = /^https:\/\/github\.com\/[^/]+\/[^/]+/;
+    if (!urlPattern.test(url)) {
       setError('Please enter a valid GitHub repository URL');
       setShake(true);
       setTimeout(() => setShake(false), 500);
       return;
     }
 
-    console.log('Scanning:', url);
+    if (onScanStart) onScanStart();
+    await startScan(url);
+    
+    if (scanState.status === 'complete' && onScanComplete) {
+      onScanComplete(scanState.result);
+    }
   };
+
+  const isScanning = scanState.status === 'submitting' || scanState.status === 'cloning' || scanState.status === 'scanning';
+  const showProgress = isScanning && scanState.progressMessage;
+  const showFailure = scanState.status === 'failed';
 
   return (
     <motion.div
@@ -74,7 +86,7 @@ export function SearchBar({ isLoading = false }) {
           <button
             type="submit"
             aria-label="Scan repository"
-            disabled={isLoading}
+            disabled={isScanning || isLoading}
             className="px-6 font-medium flex items-center gap-2 transition-all duration-200"
             style={{
               height: '48px',
@@ -82,25 +94,25 @@ export function SearchBar({ isLoading = false }) {
               background: 'var(--vs-accent)',
               color: '#0a0f0a',
               borderRadius: '8px',
-              cursor: isLoading ? 'not-allowed' : 'pointer',
-              opacity: isLoading ? 0.6 : 1,
+              cursor: isScanning || isLoading ? 'not-allowed' : 'pointer',
+              opacity: isScanning || isLoading ? 0.6 : 1,
               fontSize: '15px',
               border: 'none',
             }}
             onMouseEnter={(e) => {
-              if (!isLoading) {
+              if (!isScanning && !isLoading) {
                 e.currentTarget.style.transform = 'scale(1.02)';
                 e.currentTarget.style.filter = 'brightness(1.1)';
               }
             }}
             onMouseLeave={(e) => {
-              if (!isLoading) {
+              if (!isScanning && !isLoading) {
                 e.currentTarget.style.transform = 'scale(1)';
                 e.currentTarget.style.filter = 'brightness(1)';
               }
             }}
           >
-            {isLoading ? (
+            {isScanning ? (
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}>
                 <path d="M21 12a9 9 0 11-6.219-8.56" />
               </svg>
@@ -130,6 +142,49 @@ export function SearchBar({ isLoading = false }) {
           <div className="ml-6 mt-1" style={{ color: 'var(--vs-text-muted)', fontSize: '13px' }}>
             Example: https://github.com/username/repository
           </div>
+        </motion.div>
+      )}
+
+      {showProgress && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-3 font-sans text-[14px]"
+          style={{ color: 'var(--vs-accent)' }}
+        >
+          <div className="flex items-center gap-2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}>
+              <path d="M21 12a9 9 0 11-6.219-8.56" />
+            </svg>
+            <span>{scanState.progressMessage}</span>
+          </div>
+        </motion.div>
+      )}
+
+      {showFailure && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-3 font-sans text-[14px]"
+          style={{ color: 'var(--vs-critical)' }}
+        >
+          <div className="flex items-center gap-2">
+            <span>✖</span>
+            <span>{scanState.error}</span>
+          </div>
+          <button
+            onClick={reset}
+            className="mt-2 px-4 py-2 rounded-lg font-medium transition-all"
+            style={{
+              background: 'var(--vs-accent)',
+              color: '#0a0f0a',
+              fontSize: '13px',
+              cursor: 'pointer',
+              border: 'none',
+            }}
+          >
+            Try again
+          </button>
         </motion.div>
       )}
     </motion.div>

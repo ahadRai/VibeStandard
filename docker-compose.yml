@@ -1,0 +1,52 @@
+version: "3.9"
+
+services:
+
+  api:
+    build:
+      context: .
+      dockerfile: vibestandard-api/Dockerfile
+    container_name: vibestandard-api
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=false
+      - CORS_ORIGINS=http://localhost:3000
+      - MAX_CONCURRENT_SCANS=5
+      - CLONE_DIR=/tmp/vibestandard-clones
+    volumes:
+      - clone-storage:/tmp/vibestandard-clones
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  web:
+    build:
+      context: vibestandard-frontend/vibestandard-web
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=http://localhost:8000
+    container_name: vibestandard-web
+    ports:
+      - "3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  clone-storage:
+    driver: local
+
+networks:
+  default:
+    name: vibestandard-network

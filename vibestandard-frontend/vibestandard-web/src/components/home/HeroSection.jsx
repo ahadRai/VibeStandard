@@ -2,13 +2,13 @@ import { motion } from 'framer-motion';
 import { AnimatedBackground } from './AnimatedBackground';
 import { SearchBar } from './SearchBar';
 
-export function HeroSection() {
+export function HeroSection({ onScanComplete, onScanStart }) {
   return (
     <section
       className="relative min-h-screen flex flex-col items-center justify-center"
       style={{ paddingTop: '64px' }}
     >
-      <AnimatedBackground />
+      <AnimatedBackground isScanning={false} />
 
       <div className="relative z-10 flex flex-col items-center justify-center px-6" style={{ gap: '32px', maxWidth: '100%' }}>
         <motion.div
@@ -62,7 +62,7 @@ export function HeroSection() {
         </motion.p>
 
         <div style={{ marginTop: '16px' }}>
-          <SearchBar />
+          <SearchBar onScanComplete={onScanComplete} onScanStart={onScanStart} />
         </div>
 
         <motion.div
