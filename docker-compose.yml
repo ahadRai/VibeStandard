@@ -11,7 +11,7 @@ services:
       - "8000:8000"
     environment:
       - DEBUG=${DEBUG:-false}
-      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://3.26.114.125}
       - MAX_CONCURRENT_SCANS=5
       - CLONE_DIR=/tmp/vibestandard-clones
     volumes:
@@ -29,10 +29,10 @@ services:
       context: vibestandard-frontend/vibestandard-web
       dockerfile: Dockerfile
       args:
-        - VITE_API_URL=${VITE_API_URL:-http://localhost:8000}
+        - VITE_API_URL=${VITE_API_URL:-http://3.26.114.125:8000}
     container_name: vibestandard-web
     ports:
-      - "3000:3000"
+      - "80:3000"
     depends_on:
       api:
         condition: service_healthy
