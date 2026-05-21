@@ -11,7 +11,7 @@ services:
       - "8000:8000"
     environment:
       - DEBUG=${DEBUG:-false}
-      - CORS_ORIGINS=${CORS_ORIGINS:-http://3.26.114.125:3000}
+      - CORS_ORIGINS=*
       - MAX_CONCURRENT_SCANS=5
       - CLONE_DIR=/tmp/vibestandard-clones
     volumes:
