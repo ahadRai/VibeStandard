@@ -22,8 +22,8 @@ html:not(.light) {
   --vs-accent-glow: rgba(98, 251, 152, 0.25);
   --vs-critical: #ff4757;
   --vs-high: #ffa502;
-  --vs-medium: #3742fa;
-  --vs-low: #747d8c;
+  --vs-medium: #ffee00;
+  --vs-low: #afda25;
   --vs-success: #62fb98;
 }
 
@@ -41,8 +41,8 @@ html.light {
   --vs-accent-glow: rgba(15, 140, 58, 0.2);
   --vs-critical: #d63031;
   --vs-high: #e17055;
-  --vs-medium: #2d3436;
-  --vs-low: #636e72;
+  --vs-medium: #ebe214;
+  --vs-low: #9dc323;
   --vs-success: #0f8c3a;
 }
 

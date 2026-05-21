@@ -49,9 +49,9 @@ export function ScanResultPanel({ result, onReset, githubUrl }) {
 
   const severityColors = {
     critical: 'var(--vs-critical)',
-    high: 'var(--vs-warning)',
-    medium: 'var(--vs-accent)',
-    low: 'var(--vs-text-muted)',
+    high: 'var(--vs-high)',
+    medium: 'var(--vs-medium)',
+    low: 'var(--vs-low)',
   };
 
   // Group findings by severity

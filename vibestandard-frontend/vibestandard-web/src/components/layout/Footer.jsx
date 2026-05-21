@@ -10,7 +10,7 @@ export function Footer() {
     >
       <div className="h-full px-6 flex items-center justify-between max-w-7xl mx-auto" style={{ padding: '0 24px' }}>
         <div className="hidden md:block text-[13px]" style={{ color: 'var(--vs-text-muted)', margin: '0' }}>
-          © 2025 VibeStandard
+          © 2026 VibeStandard
         </div>
 
         <div className="hidden md:block text-[13px]" style={{ color: 'var(--vs-text-muted)', margin: '0' }}>
