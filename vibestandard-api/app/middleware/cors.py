@@ -7,7 +7,7 @@ def add_cors_middleware(app, settings):
         CORSMiddleware,
         allow_origins=origins,
         allow_credentials=False,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["Content-Type", "Accept"],
         max_age=600,
     )
