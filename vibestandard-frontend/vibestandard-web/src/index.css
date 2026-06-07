@@ -20,10 +20,10 @@ html:not(.light) {
   --vs-accent: #62fb98;
   --vs-accent-dim: rgba(98, 251, 152, 0.1);
   --vs-accent-glow: rgba(98, 251, 152, 0.25);
-  --vs-critical: #ff4757;
-  --vs-high: #ffa502;
+  --vs-critical: #f12525;
+  --vs-high: #fe973d;
   --vs-medium: #ffee00;
-  --vs-low: #afda25;
+  --vs-low: #365cf8;
   --vs-success: #62fb98;
 }
 
@@ -39,10 +39,10 @@ html.light {
   --vs-accent: #0f8c3a;
   --vs-accent-dim: rgba(15, 140, 58, 0.08);
   --vs-accent-glow: rgba(15, 140, 58, 0.2);
-  --vs-critical: #d63031;
-  --vs-high: #e17055;
-  --vs-medium: #ebe214;
-  --vs-low: #9dc323;
+  --vs-critical: #f12525;
+  --vs-high: #fe973d;
+  --vs-medium: #ebe014;
+  --vs-low: #0033ff;
   --vs-success: #0f8c3a;
 }
 
