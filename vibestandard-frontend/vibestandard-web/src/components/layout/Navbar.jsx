@@ -57,7 +57,7 @@ export function Navbar() {
           ))}
 
           <a
-            href="https://github.com"
+            href="https://github.com/ahadRai/Vibe_Standard"
             target="_blank"
             rel="noopener noreferrer"
             className="relative text-[#0a1f0d] font-medium text-[15px] flex items-center gap-1.5"
