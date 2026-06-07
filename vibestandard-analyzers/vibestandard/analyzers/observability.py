@@ -27,55 +27,64 @@ OBS_RULES = {
     "no-structured-logging": {
         "name": "No structured logging library",
         "severity": "medium",
-        "message": "No structured logging library found. The application appears to use print() statements for output. In production, print() output is unstructured, unsearchable, and often lost entirely depending on how the process is managed.",
+        "explanation": "No structured logging library found. The application appears to use print() statements for output. In production, print() output is unstructured, unsearchable, and often lost entirely depending on how the process is managed.",
+        "why_it_matters": "Without structured logs, debugging production issues means SSH-ing into servers and grepping through unstructured text. Mean time to resolution increases from minutes to hours.",
         "fix": ""  # Will be populated dynamically based on ecosystem
     },
     "no-error-tracking": {
         "name": "No error tracking service",
         "severity": "medium",
-        "message": "No error tracking service detected. Unhandled exceptions in production will be silent — you will only learn about errors from user complaints.",
+        "explanation": "No error tracking service detected. Unhandled exceptions in production will be silent — you will only learn about errors from user complaints.",
+        "why_it_matters": "Without error tracking, production bugs go unnoticed until users report them. You lose the stack trace, context, and frequency data needed to prioritize and fix issues quickly.",
         "fix": ""  # Will be populated dynamically based on ecosystem
     },
     "no-health-endpoint": {
         "name": "No health check endpoint",
         "severity": "high",
-        "message": "No health check endpoint found. Without a /health endpoint, load balancers, container orchestrators, and uptime monitors cannot verify your application is running correctly. Unhealthy instances will continue receiving traffic.",
+        "explanation": "No health check endpoint found. Without a /health endpoint, load balancers, container orchestrators, and uptime monitors cannot verify your application is running correctly. Unhealthy instances will continue receiving traffic.",
+        "why_it_matters": "Without a health endpoint, your orchestrator cannot detect a deadlocked or crashed application. Traffic keeps routing to broken instances, causing user-visible outages that persist until manual intervention.",
         "fix": "Add a simple health endpoint that returns HTTP 200 when the app is running. In FastAPI: @app.get('/health') def health(): return {'status': 'ok'}. Make it check database connectivity if possible."
     },
     "no-request-id-middleware": {
         "name": "No request ID middleware",
         "severity": "low",
-        "message": "No request ID or correlation ID middleware found. Without request IDs, tracing a single user request across multiple log lines or services is extremely difficult when debugging production issues.",
+        "explanation": "No request ID or correlation ID middleware found. Without request IDs, tracing a single user request across multiple log lines or services is extremely difficult when debugging production issues.",
+        "why_it_matters": "In a multi-service architecture, a single user request generates logs across dozens of services. Without correlation IDs, reconstructing the full request timeline for debugging is nearly impossible.",
         "fix": "Add request ID middleware that generates a UUID per request and attaches it to logs. In FastAPI use the asgi-correlation-id package. In Django use django-request-id. Log the request ID with every log statement."
     },
     "log-rotation-not-configured": {
         "name": "Log rotation not configured",
         "severity": "medium",
-        "message": "Logging is configured to write to a file without log rotation. Log files will grow indefinitely and eventually fill the disk, causing the application and potentially the entire server to stop functioning.",
+        "explanation": "Logging is configured to write to a file without log rotation. Log files will grow indefinitely and eventually fill the disk, causing the application and potentially the entire server to stop functioning.",
+        "why_it_matters": "Unrotated log files fill disks over time. A full disk crashes not only your application but every other service on the same host, turning a logging oversight into a full outage.",
         "fix": "Use RotatingFileHandler or TimedRotatingFileHandler from Python's logging module. Or better yet, log to stdout and let your container runtime or log aggregator (Datadog, CloudWatch, Loki) handle storage and rotation."
     },
     "debug-logging-in-production": {
         "name": "Debug logging hardcoded",
         "severity": "medium",
-        "message": "Logging level is hardcoded to DEBUG. In production, DEBUG logging generates extremely high log volume, exposes sensitive data in logs, and can significantly degrade performance.",
+        "explanation": "Logging level is hardcoded to DEBUG. In production, DEBUG logging generates extremely high log volume, exposes sensitive data in logs, and can significantly degrade performance.",
+        "why_it_matters": "DEBUG logging in production can generate gigabytes of logs per hour, filling disks, driving up log storage costs, and making it impossible to find actual errors in the noise.",
         "fix": "Set the log level from an environment variable: logging.basicConfig(level=os.environ.get('LOG_LEVEL', 'INFO')). Set LOG_LEVEL=DEBUG locally and LOG_LEVEL=INFO or WARNING in production."
     },
     "no-metrics-endpoint": {
         "name": "No metrics instrumentation",
         "severity": "low",
-        "message": "No metrics instrumentation found. Without metrics you cannot track response times, error rates, or throughput — the three signals needed to understand production performance.",
+        "explanation": "No metrics instrumentation found. Without metrics you cannot track response times, error rates, or throughput — the three signals needed to understand production performance.",
+        "why_it_matters": "Without metrics, you cannot detect performance degradation, set up alerts for anomalies, or capacity-plan. Issues are only discovered after users complain about slowness or outages.",
         "fix": ""  # Will be populated dynamically based on ecosystem
     },
     "no-graceful-shutdown": {
         "name": "No graceful shutdown handling",
         "severity": "medium",
-        "message": "No graceful shutdown handling detected. When the container receives a SIGTERM signal during deployment or scaling, the application will be killed immediately, dropping any in-flight requests.",
+        "explanation": "No graceful shutdown handling detected. When the container receives a SIGTERM signal during deployment or scaling, the application will be killed immediately, dropping any in-flight requests.",
+        "why_it_matters": "Without graceful shutdown, every deployment kills in-flight requests. Users see 502 errors, database transactions are left half-complete, and data integrity is at risk.",
         "fix": "Register a SIGTERM handler that stops accepting new requests and waits for in-flight requests to complete before exiting. In FastAPI use @app.on_event('shutdown'). In Flask use atexit.register(). Allow at least 30 seconds for graceful shutdown."
     },
     "no-dependency-monitoring": {
         "name": "No dependency monitoring",
         "severity": "low",
-        "message": "External HTTP calls are made with no timeout or retry logic. A slow or unresponsive external service will cause your application's threads to hang indefinitely, eventually exhausting the thread pool and taking down the entire application.",
+        "explanation": "External HTTP calls are made with no timeout or retry logic. A slow or unresponsive external service will cause your application's threads to hang indefinitely, eventually exhausting the thread pool and taking down the entire application.",
+        "why_it_matters": "A single slow external dependency can cascade into a full outage. Without timeouts, threads pile up waiting for responses that never come, eventually exhausting resources and crashing the entire application.",
         "fix": "Always set timeouts on external calls: requests.get(url, timeout=5). Add retry logic with exponential backoff using the tenacity library. Consider a circuit breaker pattern for critical dependencies."
     }
 }
@@ -127,7 +136,8 @@ class ObservabilityAnalyzer(BaseAnalyzer):
             rule_id=rule_id,
             name=rule["name"],
             severity=rule["severity"],
-            message=rule["message"],
+            explanation=rule["explanation"],
+            why_it_matters=rule["why_it_matters"],
             fix=fix,
             file=file or "N/A",
             line=line,

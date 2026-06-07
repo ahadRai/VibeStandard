@@ -121,7 +121,7 @@ class ScoringEngine:
         Remove duplicate findings.
         
         Two findings are duplicates if they share the same (rule_id, file, line).
-        Keep the one with the longer message if duplicates exist.
+        Keep the one with the longer explanation if duplicates exist.
         Also deduplicate whole-codebase findings (file == "codebase").
         """
         seen = {}
@@ -131,9 +131,9 @@ class ScoringEngine:
             key = (finding.rule_id, finding.file, finding.line)
             
             if key in seen:
-                # Keep the one with the longer, more descriptive message
+                # Keep the one with the longer, more descriptive explanation
                 existing = seen[key]
-                if len(finding.message) > len(existing.message):
+                if len(finding.explanation) > len(existing.explanation):
                     seen[key] = finding
             else:
                 seen[key] = finding

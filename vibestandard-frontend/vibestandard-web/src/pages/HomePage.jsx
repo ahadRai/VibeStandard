@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { HeroSection } from '../components/home/HeroSection';
 import { FeatureCards } from '../components/home/FeatureCards';
 import { HowItWorks } from '../components/home/HowItWorks';
@@ -7,6 +8,12 @@ import { ScanResultPanel } from '../components/results/ScanResultPanel';
 export function HomePage() {
   const [scanResult, setScanResult] = useState(null);
   const [githubUrl, setGithubUrl] = useState('');
+  const location = useLocation();
+
+  useEffect(() => {
+    setScanResult(null);
+    setGithubUrl('');
+  }, [location.key]);
 
   const handleScanComplete = (result) => {
     setScanResult(result);

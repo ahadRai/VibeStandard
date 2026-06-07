@@ -45,61 +45,71 @@ class SecurityAnalyzer(BaseAnalyzer):
         "sql-injection-concat": {
             "name": "SQL injection via string concatenation",
             "severity": "critical",
-            "message": "SQL query is built using string concatenation or f-string interpolation. This allows attackers to manipulate the query and access or destroy data.",
+            "explanation": "SQL query is built using string concatenation or f-string interpolation. This allows attackers to manipulate the query and access or destroy data.",
+            "why_it_matters": "SQL injection is the #1 web vulnerability. Attackers can read, modify, or delete any data in your database, escalate to full server compromise, and bypass all authentication.",
             "fix": "Use parameterized queries: cursor.execute('SELECT * FROM users WHERE id = %s', (user_id,)). Never concatenate variables directly into SQL strings."
         },
         "eval-on-input": {
             "name": "eval() called on user input",
             "severity": "critical",
-            "message": "eval() or exec() is called with user-controlled input. This allows attackers to execute arbitrary Python code on your server.",
+            "explanation": "eval() or exec() is called with user-controlled input. This allows attackers to execute arbitrary Python code on your server.",
+            "why_it_matters": "eval() on user input is equivalent to giving attackers a shell on your server. They can read files, exfiltrate data, install malware, and pivot to other systems.",
             "fix": "Remove eval() and exec() entirely. Use a safe expression parser (like simpleeval) if you need to evaluate user expressions, or rethink the design to avoid dynamic code execution."
         },
         "ssl-verify-disabled": {
             "name": "SSL verification disabled",
             "severity": "high",
-            "message": "SSL/TLS certificate verification is disabled. This allows attackers to intercept encrypted traffic using a man-in-the-middle attack.",
+            "explanation": "SSL/TLS certificate verification is disabled. This allows attackers to intercept encrypted traffic using a man-in-the-middle attack.",
+            "why_it_matters": "With SSL verification disabled, any network intermediary can read and modify all traffic between your app and the external service, including auth tokens and user data.",
             "fix": "Remove verify=False. If you are using a self-signed certificate, configure a custom CA bundle instead: requests.get(url, verify='/path/to/ca-bundle.crt')"
         },
         "csrf-disabled": {
             "name": "CSRF protection disabled",
             "severity": "high",
-            "message": "CSRF protection is disabled. This allows attackers to trick authenticated users into performing unintended actions on your application.",
+            "explanation": "CSRF protection is disabled. This allows attackers to trick authenticated users into performing unintended actions on your application.",
+            "why_it_matters": "Without CSRF protection, an attacker can craft a page that silently submits forms on behalf of a logged-in user — changing passwords, transferring funds, or deleting accounts.",
             "fix": "Remove @csrf_exempt from non-API views. If building a REST API consumed by a separate frontend, use token-based authentication (JWT) instead of session cookies, which eliminates the need for CSRF tokens."
         },
         "password-not-hashed": {
             "name": "Password stored without hashing",
             "severity": "high",
-            "message": "Passwords appear to be stored without hashing. Storing raw passwords means a database breach exposes every user's password immediately.",
+            "explanation": "Passwords appear to be stored without hashing. Storing raw passwords means a database breach exposes every user's password immediately.",
+            "why_it_matters": "If your database is ever breached, every user's password is exposed in plaintext. Users reuse passwords — this compromises their accounts on other services too, creating massive legal liability.",
             "fix": "Use bcrypt or argon2 to hash passwords before storing them. Example with bcrypt: hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()). Never store or log raw passwords."
         },
         "jwt-hardcoded-secret": {
             "name": "JWT secret hardcoded",
             "severity": "critical",
-            "message": "JWT secret is hardcoded as a string literal. Anyone who reads your source code (including in a public repo) can forge authentication tokens for any user.",
+            "explanation": "JWT secret is hardcoded as a string literal. Anyone who reads your source code (including in a public repo) can forge authentication tokens for any user.",
+            "why_it_matters": "With the JWT secret, an attacker can mint valid tokens for any user, including admin accounts, completely bypassing authentication. This is a full account takeover vulnerability.",
             "fix": "Move the JWT secret to an environment variable: jwt.encode(payload, os.environ.get('JWT_SECRET'), algorithm='HS256'). Generate a strong random secret: python -c \"import secrets; print(secrets.token_hex(64))\""
         },
         "pickle-untrusted-data": {
             "name": "Pickle deserialization of untrusted data",
             "severity": "critical",
-            "message": "pickle.loads() is called on data from an external source. Pickle can execute arbitrary code during deserialization — passing attacker-controlled data to pickle.loads() is remote code execution.",
+            "explanation": "pickle.loads() is called on data from an external source. Pickle can execute arbitrary code during deserialization — passing attacker-controlled data to pickle.loads() is remote code execution.",
+            "why_it_matters": "Unpickling attacker-controlled data gives them full remote code execution on your server. They can run any command, read any file, and pivot to your entire infrastructure.",
             "fix": "Never deserialize pickle data from untrusted sources. Use JSON for data interchange. If you need to cache Python objects, use a safe serialization format like MessagePack or marshal only within a trusted boundary."
         },
         "open-redirect": {
             "name": "Open redirect vulnerability",
             "severity": "medium",
-            "message": "Application redirects to a URL from user input without validation. Attackers use open redirects to build convincing phishing URLs that appear to come from your domain.",
+            "explanation": "Application redirects to a URL from user input without validation. Attackers use open redirects to build convincing phishing URLs that appear to come from your domain.",
+            "why_it_matters": "Open redirects are used in phishing campaigns — attackers craft links that appear to be on your domain but redirect victims to credential-stealing pages, destroying user trust.",
             "fix": "Validate the redirect URL before using it. Only allow redirects to relative URLs or a whitelist of known safe domains. Use url_has_allowed_host_and_scheme() in Django or implement your own allowlist check."
         },
         "unrestricted-file-upload": {
             "name": "Unrestricted file upload",
             "severity": "high",
-            "message": "File upload does not validate file type or extension. Attackers can upload executable files (PHP, Python scripts) and potentially execute them on your server.",
+            "explanation": "File upload does not validate file type or extension. Attackers can upload executable files (PHP, Python scripts) and potentially execute them on your server.",
+            "why_it_matters": "Unrestricted uploads let attackers place web shells and scripts on your server. If those files are served or executed, the attacker gains full remote code execution.",
             "fix": "Validate the file extension against an allowlist before saving: ALLOWED = {'png', 'jpg', 'pdf'}. Use werkzeug's secure_filename() to sanitize the filename. Consider also validating MIME type using the python-magic library."
         },
         "missing-auth-on-sensitive-route": {
             "name": "Missing authentication on sensitive route",
             "severity": "medium",
-            "message": "A sensitive route is accessible without authentication. Any user — including unauthenticated attackers — can access this endpoint.",
+            "explanation": "A sensitive route is accessible without authentication. Any user — including unauthenticated attackers — can access this endpoint.",
+            "why_it_matters": "Unauthenticated sensitive endpoints let anyone access admin panels, delete records, read user data, or modify configurations without logging in first.",
             "fix": "Add an authentication decorator to this route. In Django use @login_required, in Flask-Login use @login_required, in FastAPI use Depends(get_current_user), in Flask-JWT-Extended use @jwt_required()."
         }
     }
@@ -144,7 +154,8 @@ class SecurityAnalyzer(BaseAnalyzer):
             rule_id=rule_id,
             name=rule["name"],
             severity=rule["severity"],
-            message=rule["message"],
+            explanation=rule["explanation"],
+            why_it_matters=rule["why_it_matters"],
             fix=rule["fix"],
             file=file,
             line=line,
@@ -577,7 +588,8 @@ class SecurityAnalyzer(BaseAnalyzer):
                     rule_id=f"semgrep:{rule_id}",
                     name=f"Semgrep: {rule_id}",
                     severity=vs_severity,
-                    message=message,
+                    explanation=message,
+                    why_it_matters="Semgrep identified a potential security vulnerability that should be reviewed and addressed.",
                     fix="Review and fix the security issue identified by Semgrep.",
                     file=rel_path,
                     line=start_line,
@@ -624,8 +636,8 @@ class SecurityAnalyzer(BaseAnalyzer):
                 # Or prefer non-semgrep findings (our custom rules)
                 custom_findings = [f for f in group if not f.rule_id.startswith("semgrep:")]
                 if custom_findings:
-                    deduped.append(max(custom_findings, key=lambda f: len(f.message)))
+                    deduped.append(max(custom_findings, key=lambda f: len(f.explanation)))
                 else:
-                    deduped.append(max(group, key=lambda f: len(f.message)))
+                    deduped.append(max(group, key=lambda f: len(f.explanation)))
         
         return deduped

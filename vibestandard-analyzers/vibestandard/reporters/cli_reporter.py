@@ -151,18 +151,23 @@ class TerminalReporter(BaseReporter):
                         for s in severity_order[:severity_order.index(severity)]
                     ) + idx
                     
-                    # rule_id and file:line with number
+                    # Title (name) and rule_id
                     file_display = f"{finding.file}:{finding.line}" if finding.line else finding.file
                     
                     self.console.print(
-                        f"  [{severity_colors[severity]}]{global_num}. {finding.rule_id}[/]"
+                        f"  [{severity_colors[severity]}]{global_num}. {finding.name}[/]"
                     )
-                    self.console.print(f"     [dim]{file_display}[/]")
+                    self.console.print(f"     [dim]{finding.rule_id} — {file_display}[/]")
                     
-                    # Message
-                    self.console.print(f"     {finding.message}")
+                    # Explanation
+                    if finding.explanation:
+                        self.console.print(f"     {finding.explanation}")
                     
-                    # Fix
+                    # Why it matters
+                    if finding.why_it_matters:
+                        self.console.print(f"     [bold yellow]Why:[/] {finding.why_it_matters}")
+                    
+                    # Recommended fix
                     if finding.fix:
                         # Truncate long fixes for readability
                         fix_text = finding.fix

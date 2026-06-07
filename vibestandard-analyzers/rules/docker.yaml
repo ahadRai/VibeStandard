@@ -3,10 +3,14 @@
   severity: high
   analyzer: infra
   ecosystem: docker
-  message: >
+  explanation: >
     No USER instruction was found in the Dockerfile. This means the container
     process runs as root, which dramatically increases the blast radius of any
     container escape or RCE vulnerability.
+  why_it_matters: >
+    A root process inside a container that escapes its sandbox has full access
+    to the host kernel and filesystem. This turns a single compromised
+    container into a full host takeover.
   fix: >
     Add a non-root user to your Dockerfile. After installing dependencies, add:
       RUN addgroup --system app && adduser --system --group app
@@ -21,10 +25,14 @@
   severity: medium
   analyzer: infra
   ecosystem: docker
-  message: >
+  explanation: >
     No HEALTHCHECK instruction is defined. Without it, Docker and orchestrators
     like Kubernetes cannot determine if your container is actually healthy,
     leading to traffic being routed to broken instances.
+  why_it_matters: >
+    Without a health check, a crashed or deadlocked application continues
+    receiving traffic. Users see errors, load balancers cannot reroute, and
+    orchestrators cannot self-heal — degrading reliability across the stack.
   fix: >
     Add a HEALTHCHECK instruction, for example:
       HEALTHCHECK --interval=30s --timeout=5s CMD curl -f http://localhost:8080/health || exit 1
@@ -37,10 +45,14 @@
   severity: high
   analyzer: infra
   ecosystem: docker
-  message: >
+  explanation: >
     A Docker image is referenced with the ':latest' tag. This tag is mutable —
     the image it points to can change at any time, making deployments
     non-reproducible and potentially pulling in breaking changes.
+  why_it_matters: >
+    The :latest tag is not a version — it changes silently on every push.
+    A deploy today may pull a completely different image than yesterday,
+    making rollbacks impossible and debugging production issues unreliable.
   fix: >
     Pin all base images to a specific digest or version tag, e.g.:
       FROM python:3.12.3-slim
@@ -55,10 +67,14 @@
   severity: critical
   analyzer: infra
   ecosystem: docker
-  message: >
+  explanation: >
     A database service (postgres, mysql, mongo, redis) is defined in
     docker-compose.yml but has no volumes: mapping. All data will be
     permanently lost every time the container is restarted or recreated.
+  why_it_matters: >
+    Container filesystems are ephemeral. Without a volume, every database
+    write is lost on restart. This means total data loss during deployments,
+    scaling events, or crash recovery.
   fix: >
     Add a named volume for the database data directory, for example:
       services:
@@ -77,10 +93,14 @@
   severity: medium
   analyzer: infra
   ecosystem: docker
-  message: >
+  explanation: >
     One or more services in docker-compose.yml have no restart: policy.
     Without it, services will not recover automatically after a crash or
     system reboot.
+  why_it_matters: >
+    Without a restart policy, a single crash or host reboot leaves the
+    service permanently down until someone manually restarts it, causing
+    extended outages outside of business hours.
   fix: >
     Add `restart: unless-stopped` or `restart: always` to each service
     in docker-compose.yml that should be resilient to failures.
@@ -93,10 +113,14 @@
   severity: high
   analyzer: infra
   ecosystem: docker
-  message: >
+  explanation: >
     Secrets (passwords, API keys, tokens) appear to be passed as plain
     environment: variables in docker-compose.yml. These are visible in
     `docker inspect` output, process listings, and container logs.
+  why_it_matters: >
+    Plain environment variables are exposed in docker inspect, /proc/*/environ,
+    crash dumps, and log output. Anyone with Docker access on the host can
+    read every secret without touching the application.
   fix: >
     Use Docker secrets or a secrets manager. At minimum, load sensitive values
     from a .env file (which must be in .gitignore) rather than hardcoding them
@@ -110,11 +134,15 @@
   severity: low
   analyzer: infra
   ecosystem: docker
-  message: >
+  explanation: >
     No .dockerignore file was found. Without it, the Docker build context
     includes all files in the directory — including .git, node_modules,
     secrets files, and local configs — increasing build time and image size,
     and potentially leaking sensitive files into the image.
+  why_it_matters: >
+    Without .dockerignore, your .env files, private keys, and .git history
+    (including past secrets) are baked into every Docker image layer. Anyone
+    who pulls the image can extract them.
   fix: >
     Create a .dockerignore file excluding files not needed in the image:
       .git
@@ -131,10 +159,14 @@
   severity: low
   analyzer: infra
   ecosystem: docker
-  message: >
+  explanation: >
     The Dockerfile uses only a single build stage. Multi-stage builds
     significantly reduce final image size by separating build tools from the
     production runtime image.
+  why_it_matters: >
+    Single-stage images ship compilers, package managers, and source code
+    into production. This bloats image size (slower deploys and scaling),
+    wastes bandwidth, and expands the attack surface unnecessarily.
   fix: >
     Use a builder stage for compiling/installing dependencies and a slim
     final stage for the runtime. Example:

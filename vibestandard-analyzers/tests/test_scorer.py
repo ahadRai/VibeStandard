@@ -33,14 +33,15 @@ def make_finding(
     line: int | None = None,
     analyzer: str = "dependency",
     ecosystem: str = "python",
-    message: str = "Test finding"
+    explanation: str = "Test finding"
 ) -> Finding:
     """Create a test finding with minimal required fields."""
     return Finding(
         rule_id=rule_id,
         name="Test Rule",
         severity=severity,
-        message=message,
+        explanation=explanation,
+        why_it_matters="This is a test finding for scoring purposes.",
         fix="Fix it",
         file=file,
         line=line,
@@ -304,10 +305,10 @@ def test_findings_sorted_by_severity():
     """Mixed findings, assert critical comes before high before medium before low."""
     engine = ScoringEngine()
     findings = [
-        make_finding(severity="low", rule_id="low-1", message="low"),
-        make_finding(severity="critical", rule_id="critical-1", message="critical"),
-        make_finding(severity="medium", rule_id="medium-1", message="medium"),
-        make_finding(severity="high", rule_id="high-1", message="high"),
+        make_finding(severity="low", rule_id="low-1", explanation="low"),
+        make_finding(severity="critical", rule_id="critical-1", explanation="critical"),
+        make_finding(severity="medium", rule_id="medium-1", explanation="medium"),
+        make_finding(severity="high", rule_id="high-1", explanation="high"),
     ]
     result = engine.score(findings, make_metadata())
     

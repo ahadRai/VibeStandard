@@ -224,25 +224,37 @@ export function ScanResultPanel({ result, onReset, githubUrl }) {
                     className="p-5 rounded-xl"
                     style={{ backgroundColor: 'var(--vs-bg-card)', border: '1px solid var(--vs-border)' }}
                   >
-                    {/* Top row */}
+                    {/* Title */}
+                    <h4 className="font-sans font-bold mb-2" style={{ color: 'var(--vs-text-primary)', fontSize: '16px' }}>
+                      {finding.name}
+                    </h4>
+
+                    {/* Tags row */}
                     <div className="flex items-center gap-3 mb-3 flex-wrap">
                       <span className="px-2 py-1 rounded font-mono text-xs" style={{ backgroundColor: 'var(--vs-accent-dim)', color: 'var(--vs-accent)' }}>
                         {finding.rule_id}
                       </span>
                       <span className="font-mono text-sm" style={{ color: 'var(--vs-text-muted)' }}>
-                        {finding.file}
+                        {finding.file}{finding.line ? `:${finding.line}` : ''}
                       </span>
-                      {finding.line && (
-                        <span className="font-mono text-xs" style={{ color: 'var(--vs-text-muted)' }}>
-                          :{finding.line}
-                        </span>
-                      )}
                     </div>
 
-                    {/* Message */}
-                    <p className="mb-3 font-sans" style={{ color: 'var(--vs-text-primary)', fontSize: '15px', lineHeight: '1.5' }}>
-                      {finding.message}
-                    </p>
+                    {/* Explanation */}
+                    {finding.explanation && (
+                      <p className="mb-3 font-sans" style={{ color: 'var(--vs-text-primary)', fontSize: '15px', lineHeight: '1.5' }}>
+                        {finding.explanation}
+                      </p>
+                    )}
+
+                    {/* Why it matters */}
+                    {finding.why_it_matters && (
+                      <div className="mb-3 p-3 rounded-lg" style={{ backgroundColor: 'var(--vs-bg-secondary)', borderLeft: '3px solid var(--vs-warning)' }}>
+                        <span className="font-sans font-semibold text-sm" style={{ color: 'var(--vs-warning)' }}>Why it matters: </span>
+                        <span className="font-sans text-sm" style={{ color: 'var(--vs-text-primary)' }}>
+                          {finding.why_it_matters}
+                        </span>
+                      </div>
+                    )}
 
                     {/* Collapsible fix */}
                     <button
@@ -250,7 +262,7 @@ export function ScanResultPanel({ result, onReset, githubUrl }) {
                       className="font-sans text-sm font-medium transition-all"
                       style={{ color: 'var(--vs-accent)', background: 'none', border: 'none', cursor: 'pointer' }}
                     >
-                      {expandedFixes[idx] ? 'Hide fix ▲' : 'Show fix ▼'}
+                      {expandedFixes[idx] ? 'Hide recommended fix ▲' : 'Show recommended fix ▼'}
                     </button>
                     <AnimatePresence>
                       {expandedFixes[idx] && (
@@ -328,10 +340,11 @@ function generateHTMLReport(result, githubUrl) {
   <h2>Findings</h2>
   ${result.findings.map(f => `
     <div class="finding ${f.severity}">
-      <h3>${f.rule_id} - ${f.name}</h3>
-      <p><strong>File:</strong> ${f.file}${f.line ? ':' + f.line : ''}</p>
-      <p>${f.message}</p>
-      <h4>Fix:</h4>
+      <h3>${f.name}</h3>
+      <p style="color: #888;"><code>${f.rule_id}</code> — ${f.file}${f.line ? ':' + f.line : ''}</p>
+      <p>${f.explanation}</p>
+      <p style="color: #ff8800;"><strong>Why it matters:</strong> ${f.why_it_matters}</p>
+      <h4>Recommended Fix:</h4>
       <pre>${f.fix}</pre>
     </div>
   `).join('')}

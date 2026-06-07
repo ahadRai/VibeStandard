@@ -3,10 +3,14 @@
   severity: high
   analyzer: dependency
   ecosystem: node
-  message: >
+  explanation: >
     One or more npm dependencies are pinned to 'latest' or '*'. This makes
     deployments non-reproducible — a new version released between your CI run
     and production deployment could introduce breaking changes or vulnerabilities.
+  why_it_matters: >
+    Using 'latest' or '*' means your production build pulls different code on
+    each deploy. A compromised or broken upstream release goes live automatically
+    with zero review, potentially taking down your application.
   fix: >
     Replace 'latest' and '*' with explicit version ranges (e.g. "4.18.2").
     Run `npm install` to regenerate package-lock.json and commit it.
@@ -19,10 +23,14 @@
   severity: medium
   analyzer: dependency
   ecosystem: node
-  message: >
+  explanation: >
     A package.json was found but no lock file (package-lock.json, yarn.lock,
     or pnpm-lock.yaml) is present. Without a lock file, npm install will
     resolve different versions on each run, making builds unreproducible.
+  why_it_matters: >
+    Without a lock file, every CI run and every developer machine resolves a
+    different dependency tree. This causes "works on my machine" bugs and
+    makes it impossible to reproduce a known-good production build.
   fix: >
     Run `npm install` to generate package-lock.json and commit it to version
     control. Add *.lock to your backup strategy but never to .gitignore.
@@ -35,11 +43,15 @@
   severity: high
   analyzer: dependency
   ecosystem: node
-  message: >
+  explanation: >
     A development-only package (nodemon, webpack-dev-server, jest, mocha,
     eslint, prettier, or similar) is listed under 'dependencies' instead of
     'devDependencies'. This bloats your production Docker image and may
     expose debug tooling.
+  why_it_matters: >
+    Dev tools in production increase Docker image size (slowing deploys and
+    scaling), and can expose hot-reload servers and debug endpoints that
+    attackers can use to execute code on your server.
   fix: >
     Move all development tools to 'devDependencies' in package.json.
     Run `npm install --production` or set NODE_ENV=production in your
@@ -53,9 +65,13 @@
   severity: medium
   analyzer: config
   ecosystem: node
-  message: >
+  explanation: >
     Debug or verbose logging is enabled in your Node.js configuration.
     This can expose sensitive information and impact performance.
+  why_it_matters: >
+    Debug mode in production generates excessive log volume containing
+    sensitive data (request bodies, tokens, internal paths), degrades
+    performance, and makes it harder to find real issues in log noise.
   fix: >
     Set NODE_ENV=production in your environment and ensure debug flags
     are disabled in production configs.
@@ -68,9 +84,14 @@
   severity: critical
   analyzer: config
   ecosystem: node
-  message: >
+  explanation: >
     A hardcoded password, secret key, or API token was found in your
     Node.js code. These should never be stored in source code.
+  why_it_matters: >
+    Hardcoded secrets are committed to git history permanently. If the repo
+    is ever made public or accessed by an insider, every secret is immediately
+    compromised. Automated scanners crawl public repos and exploit these within
+    minutes.
   fix: >
     Use environment variables or a secrets manager:
     const secret = process.env.JWT_SECRET;
@@ -83,9 +104,13 @@
   severity: high
   analyzer: config
   ecosystem: node
-  message: >
+  explanation: >
     CORS is configured to allow all origins (*). This exposes your API
     to cross-site attacks from any website.
+  why_it_matters: >
+    Wildcard CORS allows any malicious website to make authenticated API
+    requests on behalf of your users. This enables cross-site data theft,
+    session hijacking, and account takeover.
   fix: >
     Configure CORS to allow only specific trusted origins:
     app.use(cors({ origin: ['https://yourdomain.com'] }));

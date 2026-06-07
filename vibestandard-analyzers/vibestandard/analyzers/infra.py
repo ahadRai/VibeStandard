@@ -35,73 +35,85 @@ INFRA_RULES = {
     "docker-run-as-root": {
         "name": "Docker container runs as root",
         "severity": "high",
-        "message": "Dockerfile has no USER instruction — container runs as root. If the container is compromised, the attacker has root-level access to the host system.",
+        "explanation": "Dockerfile has no USER instruction — the container runs as root. If the container process is compromised, the attacker gains root-level privileges inside the container and potentially on the host.",
+        "why_it_matters": "Running as root violates the principle of least privilege and is a CIS Docker Benchmark violation. A container escape or kernel exploit could give an attacker full control of the host.",
         "fix": "Add a non-root user before the final CMD or ENTRYPOINT: RUN addgroup --system app && adduser --system --ingroup app app then USER app"
     },
     "no-healthcheck": {
         "name": "No HEALTHCHECK in Dockerfile",
         "severity": "medium",
-        "message": "Dockerfile has no HEALTHCHECK instruction. Docker and orchestrators cannot detect if your application has crashed inside the container.",
+        "explanation": "Dockerfile has no HEALTHCHECK instruction. Docker and orchestrators like Kubernetes cannot detect if your application has crashed or become unresponsive inside the container.",
+        "why_it_matters": "Without a healthcheck, a crashed application continues to receive traffic, causing user-facing errors. Orchestrators cannot auto-restart unhealthy containers, reducing reliability and self-healing capability.",
         "fix": "Add a HEALTHCHECK instruction: HEALTHCHECK --interval=30s --timeout=10s --retries=3 CMD curl -f http://localhost:8080/health || exit 1"
     },
     "latest-image-tag": {
         "name": "Image uses :latest tag or no tag",
         "severity": "high",
-        "message": "Image uses the :latest tag or no tag. The :latest tag is mutable — upstream can push a breaking change at any time and your next deployment will silently use a different image.",
+        "explanation": "Image uses the :latest tag or no tag at all. The :latest tag is mutable — upstream can push a breaking change at any time and your next deployment will silently pull a different image.",
+        "why_it_matters": "Unpinned image tags make builds non-reproducible. A new upstream release can introduce breaking changes, security regressions, or incompatibilities without any warning, making rollbacks unreliable.",
         "fix": "Pin to a specific immutable version tag: FROM python:3.13.1-slim instead of FROM python:latest. Check Docker Hub for available version tags."
     },
     "db-no-volume": {
         "name": "Database service has no volume",
         "severity": "critical",
-        "message": "Database service '{service_name}' has no volume mapping. All data will be permanently lost every time the container restarts or is recreated.",
+        "explanation": "Database service '{service_name}' has no volume mapping. All data stored in the database will be permanently lost every time the container restarts or is recreated.",
+        "why_it_matters": "Databases without persistent volumes are effectively ephemeral — any restart, update, or crash wipes all data. This is a data-loss risk that can cause catastrophic production outages and irreversible loss of user data.",
         "fix": "Add a named volume to the service:\n  volumes:\n    - postgres_data:/var/lib/postgresql/data\nAnd declare the volume at the top level:\nvolumes:\n  postgres_data:"
     },
     "no-restart-policy": {
         "name": "Service has no restart policy",
         "severity": "medium",
-        "message": "Service '{service_name}' has no restart policy. If it crashes in production it will stay down until manually restarted.",
+        "explanation": "Service '{service_name}' has no restart policy configured. If the process crashes in production it will stay down until someone manually restarts it.",
+        "why_it_matters": "A service without a restart policy stays down after a crash, causing extended downtime until an operator notices and intervenes. This is especially dangerous for critical services during off-hours.",
         "fix": "Add restart: unless-stopped to the service. For critical services consider restart: always."
     },
     "no-resource-limits": {
         "name": "Service has no resource limits",
         "severity": "medium",
-        "message": "Service '{service_name}' has no memory or CPU resource limits. A memory leak or traffic spike can take down the entire host.",
+        "explanation": "Service '{service_name}' has no memory or CPU resource limits. A memory leak or traffic spike in this service can consume all available host resources.",
+        "why_it_matters": "Without resource limits a single runaway container can exhaust the host's memory and CPU, starving other services and potentially triggering an OOM kill that takes down the entire host.",
         "fix": "Add resource limits under deploy:\n  deploy:\n    resources:\n      limits:\n        memory: 512M\n        cpus: '0.5'"
     },
     "secrets-as-env-vars": {
         "name": "Secrets hardcoded as env vars",
         "severity": "high",
-        "message": "Service '{service_name}' has secret '{var_name}' hardcoded as a plain environment variable in docker-compose.yml. Anyone with access to this file has the secret.",
+        "explanation": "Service '{service_name}' has secret '{var_name}' hardcoded as a plain environment variable in docker-compose.yml. Anyone with access to this file can read the secret in cleartext.",
+        "why_it_matters": "Hardcoded secrets in compose files are often committed to version control, exposing credentials to anyone with repo access. They also appear in docker inspect output and container logs, widening the blast radius of a leak.",
         "fix": "Use variable substitution instead: POSTGRES_PASSWORD=${{POSTGRES_PASSWORD}}. Store the actual value in a .env file that is listed in .gitignore and never committed."
     },
     "missing-dockerignore": {
         "name": "Missing .dockerignore file",
         "severity": "low",
-        "message": "No .dockerignore file found. The entire project directory is sent to the Docker build daemon, including node_modules, .git, and any local secrets.",
+        "explanation": "No .dockerignore file found. The entire project directory — including node_modules, .git, and any local secret files — is sent to the Docker build daemon as build context.",
+        "why_it_matters": "Without a .dockerignore, sensitive files like .env, private keys, and credentials can be baked into the image. Bloated build contexts also slow down builds significantly and increase image size.",
         "fix": "Create a .dockerignore file alongside your Dockerfile. At minimum include: .git, node_modules, venv, .env, __pycache__, *.pyc, .pytest_cache"
     },
     "no-multi-stage-build": {
         "name": "No multi-stage Docker build",
         "severity": "low",
-        "message": "Dockerfile uses a single build stage. The final image likely contains build tools, compilers, and dev dependencies that are not needed at runtime.",
+        "explanation": "Dockerfile uses a single build stage. The final image likely contains build tools, compilers, and development dependencies that are not needed at runtime.",
+        "why_it_matters": "Oversized images increase attack surface, slow down deployments, consume more storage and bandwidth, and raise cloud hosting costs. Multi-stage builds can reduce image size by 70-90%.",
         "fix": "Use a multi-stage build: use one stage to build/compile and a second minimal stage to run. This can reduce image size by 70-90%."
     },
     "compose-only-no-k8s": {
         "name": "Only Docker Compose, no cloud deployment config",
         "severity": "low",
-        "message": "Only a docker-compose.yml is present with no cloud or Kubernetes deployment configuration. Docker Compose is not suitable for production-scale or highly available deployments.",
+        "explanation": "Only a docker-compose.yml is present with no cloud or Kubernetes deployment configuration. Docker Compose is designed for local development and single-host deployments.",
+        "why_it_matters": "Docker Compose alone does not provide high availability, auto-scaling, rolling deployments, or self-healing — all of which are expected for production workloads at scale.",
         "fix": "For production, consider deploying to a managed platform (Railway, Render, Fly.io) with a config file, or write Kubernetes manifests or a Helm chart for more control."
     },
     "no-ci-pipeline": {
         "name": "No CI/CD pipeline configured",
         "severity": "medium",
-        "message": "No CI/CD pipeline configuration found. Code is being deployed without automated testing, building, or validation.",
+        "explanation": "No CI/CD pipeline configuration found. Code is being deployed without automated testing, building, or validation.",
+        "why_it_matters": "Without CI, broken code can reach production undetected. Manual deployments are error-prone, slow, and inconsistent. CI/CD is a foundational practice for reliable software delivery.",
         "fix": "Add a GitHub Actions workflow at .github/workflows/ci.yml that runs your tests on every push and pull request before allowing deployment."
     },
     "port-bound-to-all-interfaces": {
         "name": "Database port exposed to host",
         "severity": "medium",
-        "message": "Database service '{service_name}' exposes port {port} to the host. Database ports should never be publicly accessible.",
+        "explanation": "Database service '{service_name}' exposes port {port} to all host interfaces. Database ports should never be publicly accessible.",
+        "why_it_matters": "Exposing database ports to the host (and potentially the internet) invites brute-force attacks, unauthorized data access, and data exfiltration. Databases should only be reachable from application services on the internal Docker network.",
         "fix": "Remove the ports: mapping from database services entirely. Application services on the same Docker network can reach the database by service name without exposing the port to the host."
     }
 }
@@ -145,14 +157,16 @@ class InfraAnalyzer(BaseAnalyzer):
         if not rule:
             return
         
-        message = rule["message"].format(**kwargs) if kwargs else rule["message"]
+        explanation = rule["explanation"].format(**kwargs) if kwargs else rule["explanation"]
+        why_it_matters = rule["why_it_matters"].format(**kwargs) if kwargs else rule["why_it_matters"]
         fix = rule["fix"].format(**kwargs) if kwargs else rule["fix"]
         
         finding = Finding(
             rule_id=rule_id,
             name=rule["name"],
             severity=rule["severity"],
-            message=message,
+            explanation=explanation,
+            why_it_matters=why_it_matters,
             fix=fix,
             file=file,
             line=line,

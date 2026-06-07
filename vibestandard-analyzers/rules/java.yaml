@@ -3,10 +3,14 @@
   severity: critical
   analyzer: dependency
   ecosystem: java
-  message: >
+  explanation: >
     H2 is a test and development database only. It stores data in memory
     and is wiped on every restart. It is not suitable for production.
     This is one of the most common mistakes in vibe-coded Spring Boot apps.
+  why_it_matters: >
+    H2 loses all data on every application restart. Any user registrations,
+    orders, or content created by users will be permanently destroyed the
+    next time the application deploys or crashes.
   fix: >
     Replace your H2 dependency with PostgreSQL. In pom.xml, swap
     com.h2database for org.postgresql:postgresql. Update your
@@ -21,9 +25,13 @@
   severity: critical
   analyzer: dependency
   ecosystem: java
-  message: >
+  explanation: >
     HSQLDB (HyperSQL) is a lightweight, in-memory database intended for
     development and testing. Data is lost on restart. Not production-grade.
+  why_it_matters: >
+    HSQLDB in-memory mode is volatile — all data is destroyed when the JVM
+    exits. Production deployments, rolling restarts, and crash recovery
+    will all result in total data loss.
   fix: >
     Replace HSQLDB with a production database such as PostgreSQL or MySQL.
     Update your datasource URL and store credentials in environment variables.
@@ -36,9 +44,13 @@
   severity: critical
   analyzer: dependency
   ecosystem: java
-  message: >
+  explanation: >
     Apache Derby (embedded mode) is a development database. It is not
     designed for production workloads or concurrent access at scale.
+  why_it_matters: >
+    Derby in embedded mode locks the database to a single JVM, preventing
+    horizontal scaling. It also lacks the performance, reliability, and
+    tooling needed for production data workloads.
   fix: >
     Replace Derby with PostgreSQL or another production-grade RDBMS.
     Update your datasource URL and store credentials in environment variables.
@@ -51,9 +63,13 @@
   severity: critical
   analyzer: config
   ecosystem: java
-  message: >
+  explanation: >
     spring.jpa.hibernate.ddl-auto=create-drop will DROP and recreate all
     tables on every application restart. This will destroy your production data.
+  why_it_matters: >
+    Every deployment or restart drops all tables and wipes all data. This is
+    catastrophic in production — user data, transactions, and audit records
+    are permanently destroyed without warning.
   fix: >
     Set ddl-auto to 'validate' or 'none' in production. Use a migration tool
     such as Flyway or Liquibase to manage schema changes safely.
@@ -66,10 +82,14 @@
   severity: critical
   analyzer: config
   ecosystem: java
-  message: >
+  explanation: >
     Your configuration file contains an H2 database URL (jdbc:h2 or h2:mem).
     H2 is an in-memory/test database and all data will be lost on restart.
     This is not suitable for production environments.
+  why_it_matters: >
+    An H2 URL in production config means your application is silently using
+    a volatile in-memory store. All persisted data vanishes on restart,
+    and concurrent access causes corruption under real-world load.
   fix: >
     Replace the H2 JDBC URL with a PostgreSQL or MySQL connection string.
     Store database credentials in environment variables, not in config files.
@@ -82,9 +102,13 @@
   severity: medium
   analyzer: config
   ecosystem: java
-  message: >
+  explanation: >
     Debug mode is enabled in your configuration. This can expose sensitive
     information through detailed error messages and stack traces.
+  why_it_matters: >
+    Debug mode in production generates verbose output that can leak internal
+    class names, database schemas, and environment details to attackers.
+    It also adds overhead that degrades throughput under load.
   fix: >
     Set 'debug=false' in production configuration or use environment-specific
     profiles (application-prod.properties) with debug disabled.

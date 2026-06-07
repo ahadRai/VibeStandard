@@ -442,23 +442,24 @@
                 <thead>
                     <tr>
                         <th data-column="severity">Severity</th>
-                        <th data-column="rule_id">Rule</th>
-                        <th data-column="file">File</th>
-                        <th data-column="line">Line</th>
-                        <th data-column="analyzer">Analyzer</th>
-                        <th>Message</th>
-                        <th>Fix</th>
+                        <th data-column="name">Title</th>
+                        <th data-column="file">Affected File</th>
+                        <th>Explanation</th>
+                        <th>Why It Matters</th>
+                        <th>Recommended Fix</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for finding in findings %}
                     <tr class="row-{{ finding.severity }}" data-severity="{{ finding.severity }}">
                         <td><span class="severity-badge {{ finding.severity }}">{{ finding.severity }}</span></td>
-                        <td><strong>{{ finding.rule_id }}</strong></td>
+                        <td>
+                            <strong>{{ finding.name }}</strong>
+                            <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">{{ finding.rule_id }}{% if finding.line %} :{{ finding.line }}{% endif %}</div>
+                        </td>
                         <td>{{ finding.file }}</td>
-                        <td>{{ finding.line if finding.line else 'N/A' }}</td>
-                        <td>{{ finding.analyzer }}</td>
-                        <td>{{ finding.message }}</td>
+                        <td>{{ finding.explanation }}</td>
+                        <td style="color: var(--color-high);">{{ finding.why_it_matters }}</td>
                         <td>
                             {% if finding.fix %}
                             <details>
@@ -541,7 +542,7 @@
         });
         
         function getColumnIndex(column) {
-            const columns = ['severity', 'rule_id', 'file', 'line', 'analyzer'];
+            const columns = ['severity', 'name', 'file'];
             return columns.indexOf(column) + 1;
         }
     </script>

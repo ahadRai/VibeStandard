@@ -22,7 +22,8 @@ class FindingResponse(BaseModel):
     rule_id: str
     name: str
     severity: str
-    message: str
+    explanation: str
+    why_it_matters: str
     fix: str
     file: str
     line: Optional[int]

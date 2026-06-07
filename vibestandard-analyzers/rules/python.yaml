@@ -3,11 +3,15 @@
   severity: critical
   analyzer: dependency
   ecosystem: python
-  message: >
+  explanation: >
     SQLite is a file-based, single-writer database designed for development,
     testing, and embedded use cases. It does not support concurrent writes,
     does not scale horizontally, and is not suitable for production web
     applications with multiple users.
+  why_it_matters: >
+    Using SQLite in production causes data corruption under concurrent access,
+    prevents horizontal scaling, and creates a single point of failure. Users
+    will experience database lock errors under even moderate traffic.
   fix: >
     Replace SQLite with PostgreSQL. Update your DATABASE_URL environment
     variable to point to a PostgreSQL instance. If using Django, install
@@ -21,10 +25,14 @@
   severity: high
   analyzer: dependency
   ecosystem: python
-  message: >
+  explanation: >
     A development-only package (pytest, coverage, black, isort, flake8,
     mypy, ipython, or similar) is listed as a production dependency.
     This bloats your production environment and may expose debug interfaces.
+  why_it_matters: >
+    Shipping dev tools to production increases the attack surface — debuggers
+    and test runners can be exploited if accidentally activated. It also bloats
+    Docker images, slows deployments, and increases cold-start times.
   fix: >
     Move development tools to a [dev] extras_require group in pyproject.toml
     or a separate requirements-dev.txt file. Use `pip install -e ".[dev]"` for
@@ -38,10 +46,14 @@
   severity: high
   analyzer: dependency
   ecosystem: python
-  message: >
+  explanation: >
     One or more Python dependencies are not pinned to a specific version.
     This makes builds non-reproducible and can introduce breaking changes
     unexpectedly in production.
+  why_it_matters: >
+    Unpinned dependencies mean that a `pip install` today can pull different
+    versions than yesterday. A breaking upstream release can take down your
+    production deployment without any code change on your side.
   fix: >
     Pin all production dependencies to exact versions (e.g. requests==2.31.0)
     and commit a lock file (pip freeze > requirements.lock) or use
@@ -55,10 +67,15 @@
   severity: critical
   analyzer: config
   ecosystem: python
-  message: >
+  explanation: >
     Django DEBUG=True is enabled. This exposes detailed error pages with
     stack traces, settings, and local variable values to users. Never enable
     debug mode in production.
+  why_it_matters: >
+    DEBUG=True in production leaks full stack traces, environment variables,
+    database queries, and secret keys to any user who triggers an error.
+    Attackers use this information to map your infrastructure and exploit
+    other vulnerabilities.
   fix: >
     Set DEBUG=False in production settings. Use environment variables to
     control debug mode: DEBUG=os.environ.get('DEBUG', 'False') == 'True'
@@ -71,10 +88,14 @@
   severity: critical
   analyzer: config
   ecosystem: python
-  message: >
+  explanation: >
     A hardcoded password, secret key, or API token was found in your Python
     configuration. These should never be stored in source code as they can
     be extracted from version control.
+  why_it_matters: >
+    Secrets in source code are visible to anyone with repo access, persist in
+    git history indefinitely, and are leaked if the repository is ever made
+    public. Automated scanners on GitHub find exposed secrets within minutes.
   fix: >
     Move all secrets to environment variables or a secrets manager.
     Example: SECRET_KEY=os.environ['SECRET_KEY']
@@ -87,9 +108,13 @@
   severity: high
   analyzer: config
   ecosystem: python
-  message: >
+  explanation: >
     ALLOWED_HOSTS is set to ['*'] which allows any hostname. This makes
     your application vulnerable to HTTP Host header attacks.
+  why_it_matters: >
+    A wildcard ALLOWED_HOSTS lets attackers craft requests with arbitrary Host
+    headers, enabling cache poisoning, password reset hijacking, and redirects
+    to malicious domains.
   fix: >
     Set ALLOWED_HOSTS to your actual domain names:
     ALLOWED_HOSTS = ['yourdomain.com', 'www.yourdomain.com']
@@ -102,9 +127,13 @@
   severity: high
   analyzer: config
   ecosystem: python
-  message: >
+  explanation: >
     CORS is configured to allow requests from any origin (*). This can
     expose your API to cross-site attacks from malicious websites.
+  why_it_matters: >
+    Allowing all origins means any website can make authenticated requests to
+    your API on behalf of logged-in users. This enables cross-site data theft
+    and account takeover attacks.
   fix: >
     Configure CORS to allow only specific trusted origins instead of using
     wildcards. Use django-cors-headers with CORS_ALLOWED_ORIGINS list.
