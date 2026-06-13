@@ -52,14 +52,6 @@ export function SearchBar({ isLoading = false, onScanComplete, onScanStart }) {
             border: '1px solid var(--vs-border)',
             backgroundColor: 'var(--vs-bg-card)',
           }}
-          onFocus={(e) => {
-            e.currentTarget.style.borderColor = 'var(--vs-accent)';
-            e.currentTarget.style.boxShadow = '0 0 0 3px var(--vs-accent-glow)';
-          }}
-          onBlur={(e) => {
-            e.currentTarget.style.borderColor = 'var(--vs-border)';
-            e.currentTarget.style.boxShadow = 'none';
-          }}
         >
           <div className="flex items-center flex-1">
             <div className="pl-4 pr-2 flex items-center" style={{ color: 'var(--vs-text-muted)' }}>
@@ -75,7 +67,7 @@ export function SearchBar({ isLoading = false, onScanComplete, onScanStart }) {
               placeholder="https://github.com/username/repository"
               aria-label="GitHub repository URL"
               disabled={isLoading}
-              className="flex-1 px-2 py-4 outline-none text-base"
+              className="flex-1 px-2 py-4 outline-none focus:outline-none focus-visible:outline-none text-base"
               style={{
                 color: 'var(--vs-text-primary)',
                 fontFamily: 'Fira Code, monospace',
