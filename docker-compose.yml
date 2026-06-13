@@ -7,11 +7,11 @@ services:
       context: .
       dockerfile: vibestandard-api/Dockerfile
     container_name: vibestandard-api
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     environment:
       - DEBUG=${DEBUG:-false}
-      - CORS_ORIGINS=*
+      - CORS_ORIGINS=${CORS_ORIGINS:-*}
       - MAX_CONCURRENT_SCANS=5
       - CLONE_DIR=/tmp/vibestandard-clones
     volumes:
@@ -29,10 +29,10 @@ services:
       context: vibestandard-frontend/vibestandard-web
       dockerfile: Dockerfile
       args:
-        - VITE_API_URL=${VITE_API_URL:-http://3.26.114.125:8000}
+        - VITE_API_URL=${VITE_API_URL:-http://localhost:8000}
     container_name: vibestandard-web
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     depends_on:
       api:
         condition: service_healthy
@@ -42,6 +42,33 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+
+  proxy:
+    image: nginx:alpine
+    container_name: vibestandard-proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx-proxy.conf:/etc/nginx/conf.d/proxy.conf.template:ro
+      - ./nginx-entrypoint.sh:/docker-entrypoint-custom.sh:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+    environment:
+      - DOMAIN=${DOMAIN:-localhost}
+    entrypoint: ["/bin/sh", "/docker-entrypoint-custom.sh"]
+    depends_on:
+      - api
+      - web
+    restart: unless-stopped
+
+  certbot:
+    image: certbot/certbot
+    container_name: vibestandard-certbot
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
 
 volumes:
   clone-storage:

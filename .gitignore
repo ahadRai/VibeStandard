@@ -26,6 +26,9 @@ node_modules/
 # Docker
 .docker/
 
+# SSL certificates (never commit secrets)
+certbot/
+
 # Cloned repos (never commit these)
 /tmp/vibestandard-clones/
 
