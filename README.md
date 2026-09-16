@@ -2,6 +2,8 @@
 
 **Production readiness auditor for AI-generated code.** Scan your GitHub repository for 90+ production issues including databases, secrets, security, infrastructure, and observability.
 
+### Check Releases for binary files or follow the instructions below
+
 ## Prerequisites
 
 - Docker Desktop
